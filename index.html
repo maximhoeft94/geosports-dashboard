@@ -282,6 +282,7 @@
   function render() {
     document.querySelectorAll('.tab-btn').forEach((b) => { const on = b.dataset.tab === S.tab; b.classList.toggle('active', on); b.setAttribute('aria-selected', on); });
     if (!S.meta || !S.meta.members) return;
+    if (!S.days.length) { renderWaiting(); return; }
     const M = model();
     if (!S.focus || !M.byId[S.focus]) S.focus = M.byId[M.me] ? M.me : M.members[0]?.userId;
     $('title').innerHTML = esc(M.m.group?.name || 'GeoSports') + ' <span class="accent">Scoreboard</span>';
@@ -291,6 +292,14 @@
     Object.values(charts).forEach((c) => c.destroy()); for (const k in charts) delete charts[k];
     $('app').innerHTML = S.tab === 'overview' ? overviewHTML(M) : playerHTML(M);
     if (S.tab === 'overview') overviewCharts(M); else playerCharts(M);
+  }
+
+  function renderWaiting() {
+    const m = S.meta, start = m.start || '2026-10-02';
+    $('meta-line').textContent = 'Season starts ' + fmtDate(start, { weekday: 'short', month: 'short', day: 'numeric' });
+    $('app').innerHTML = `<div class="card empty-state"><h2>Season starts ${esc(fmtDate(start, { weekday: 'long', month: 'long', day: 'numeric' }))}</h2>
+      <p>Every stat on this board is counted from that day on, so everyone starts at zero. Leaderboards, records and head-to-head records fill in after the first refresh.</p>
+      <p style="margin-top:14px" class="dim">${(m.members || []).map((p) => esc(p.name)).join(' · ')}</p></div>`;
   }
 
   // ---------- Overview ----------
@@ -306,14 +315,13 @@
     // bests
     const by = (f) => [...members].filter((p) => f(p) != null).sort((a, b) => f(b) - f(a))[0];
     const bAvg = by((p) => p.alltime?.avg), bWon = by((p) => p.alltime?.won), bStreak = by((p) => p.currentStreak), bGames = by((p) => p.alltime?.games), bWeek = by((p) => p.week?.avg);
-    // Group comparisons only use full-group days, so no one's longer personal history skews them.
     let hi = null; complete.forEach((d) => d.entries.forEach(([id, sc]) => { if (!hi || sc > hi.score) hi = { date: d.date, score: sc, id }; }));
     const bests = [
-      bAvg && ['Best all-time avg', fmt(bAvg.alltime.avg), bAvg.name, `over ${fmt(bAvg.alltime.games)} games`],
-      hi && ['Highest round', fmt(hi.score), byId[hi.id].name, fmtDate(hi.date, { month: 'short', day: 'numeric' }) + ' · full-group days'],
-      bWon && ['Most days won', fmt(bWon.alltime.won), bWon.name, `${fmt(100 * bWon.alltime.won / bWon.alltime.games, 0)}% of games played`],
-      bStreak && ['Longest active streak', fmt(bStreak.currentStreak) + ' days', bStreak.name, 'as reported by GeoSports'],
-      bGames && ['Most rounds played', fmt(bGames.alltime.games), bGames.name, `member since ${fmtDate(bGames.memberSince, { month: 'short', year: 'numeric' })}`],
+      bAvg && ['Best season avg', fmt(bAvg.alltime.avg), bAvg.name, `over ${fmt(bAvg.alltime.games)} rounds`],
+      hi && ['Highest round', fmt(hi.score), byId[hi.id].name, fmtDate(hi.date, { month: 'short', day: 'numeric' })],
+      bWon && ['Most days won', fmt(bWon.alltime.won), bWon.name, `${fmt(100 * bWon.alltime.won / bWon.alltime.games, 0)}% of rounds played`],
+      bStreak && bStreak.currentStreak > 0 && ['Longest active streak', fmt(bStreak.currentStreak) + (bStreak.currentStreak === 1 ? ' day' : ' days'), bStreak.name, 'consecutive days played'],
+      bGames && ['Most rounds played', fmt(bGames.alltime.games), bGames.name, `since ${fmtDate(M.m.start)}`],
       bWeek && ['Best avg this week', fmt(bWeek.week.avg), bWeek.name, `${bWeek.week.games} rounds`],
     ].filter(Boolean);
 
@@ -327,16 +335,16 @@
     members.forEach((p) => { const s = series[p.userId].filter((x) => full.has(x.date)); for (let i = 1; i < s.length; i++) { if (s[i].date !== addDays(s[i - 1].date, 1)) continue; const dlt = s[i].score - s[i - 1].score; if (!swing || Math.abs(dlt) > Math.abs(swing.d)) swing = { id: p.userId, d: dlt, date: s[i].date }; } });
     const formRows = members.map((p) => { const r = M.recent(p.userId, 7); return { p, n: r.length, delta: r.length && p.alltime?.avg != null ? mean(r) - p.alltime.avg : null }; }).filter((x) => x.n >= 3 && x.delta != null);
     const hot = [...formRows].sort((a, b) => b.delta - a.delta)[0], cold = [...formRows].sort((a, b) => a.delta - b.delta)[0];
-    const wr = members.filter((p) => (p.alltime?.games || 0) >= 20).sort((a, b) => b.alltime.won / b.alltime.games - a.alltime.won / a.alltime.games)[0];
+    const wr = members.filter((p) => (p.alltime?.games || 0) >= 5).sort((a, b) => b.alltime.won / b.alltime.games - a.alltime.won / a.alltime.games)[0];
     const mia = members.filter((p) => !(p.week?.games));
     const odd = [
       blow && ['trophy', 'Biggest blowout', '+' + fmt(blow.margin), blow.winners.map(name).join(' & '), `won ${fmtDate(blow.date)} with ${fmt(blow.top)}`],
-      close && ['trophy', 'Photo finish', close.margin === 0 ? 'Tie' : '+' + fmt(close.margin), close.winners.map(name).join(' & '), `edged it ${fmtDate(close.date)}`],
-      hot && hot.delta > 0 && ['trophy', 'Hot hand', sign(hot.delta), esc(hot.p.name), `last 7 days (${hot.n} rounds) vs all-time avg`],
+      close && ['trophy', 'Photo finish', close.margin === 0 ? 'Tie' : '+' + fmt(close.margin), close.winners.map(name).join(' & '), close.margin === 0 ? `tied for the win ${fmtDate(close.date)}` : `edged it ${fmtDate(close.date)}`],
+      hot && hot.delta > 0 && ['trophy', 'Hot hand', sign(hot.delta), esc(hot.p.name), `last 7 days (${hot.n} rounds) vs season avg`],
       wr && ['trophy', 'The closer', fmt(100 * wr.alltime.won / wr.alltime.games, 1) + '%', esc(wr.name), `${wr.alltime.won} wins in ${wr.alltime.games} rounds`],
       low && ['shame', 'Rough round', fmt(low.score), name(low.id), `lowest group score, ${fmtDate(low.date)}`],
       swing && ['shame', 'Wildest swing', sign(swing.d), name(swing.id), `day-over-day, ${fmtDate(swing.date)}`],
-      cold && cold.delta < 0 && ['shame', 'Ice cold', sign(cold.delta), esc(cold.p.name), `last 7 days (${cold.n} rounds) vs all-time avg`],
+      cold && cold.delta < 0 && ['shame', 'Ice cold', sign(cold.delta), esc(cold.p.name), `last 7 days (${cold.n} rounds) vs season avg`],
       mia.length && ['shame', 'Scratched', mia.length + (mia.length === 1 ? ' player' : ' players'), mia.map((p) => esc(p.name)).join(', '), 'no rounds this week'],
     ].filter(Boolean);
 
@@ -355,26 +363,26 @@
       <section class="card collapsible oddities${S.open.odd ? '' : ' collapsed'}" data-col="odd">
         <button type="button" class="card-toggle" aria-expanded="${S.open.odd}">Highlight Reel &amp; Bloopers</button>
         <div class="card-body"><div class="item-grid">${odd.map(([k, l, v, w, s]) => `<div class="item ${k}"><div class="lbl">${l}</div><div class="val">${v}</div><div class="who">${w}</div><div class="s">${esc(s)}</div></div>`).join('')}</div>
-        <p class="sub" style="margin:12px 0 0">Group records only count days with everyone’s scores${firstFull ? ' (since ' + fmtDate(firstFull) + ')' : ''}. Blowouts and photo finishes wait until a day is over. Hot hand and ice cold need 3+ rounds in the last 7 days.</p></div>
+        <p class="sub" style="margin:12px 0 0">Blowouts and photo finishes wait until a day is over. Hot hand and ice cold need 3+ rounds in the last 7 days.</p></div>
       </section>
 
       <h2 class="section-title">Season Totals</h2>
-      <p class="section-sub">Lifetime group totals from GeoSports. Not affected by filters.</p>
+      <p class="section-sub">Totals since the season started on ${esc(fmtDate(M.m.start, { month: 'long', day: 'numeric' }))}. Not affected by filters.</p>
       <div class="metric-grid">
         ${metric('Members', fmt(members.length), `${activeWeek} played this week`)}
-        ${metric('Rounds played', fmt(totalGames), 'all members, all-time')}
+        ${metric('Rounds played', fmt(totalGames), 'all members, this season')}
         ${metric('Group avg', fmt(groupAvg), 'per round, all members')}
         ${metric('Days won', fmt(members.reduce((s, p) => s + (p.alltime?.won || 0), 0)), `${fmt(100 * members.reduce((s, p) => s + (p.alltime?.won || 0), 0) / (totalGames || 1), 1)}% of all rounds`)}
         ${metric("Today's leader", leader ? esc(byId[leader.userId]?.name || '?') : '—', leader ? `${fmt(leader.score)} · ${todayRows.length} of ${members.length} played` : 'no rounds yet today', true, true)}
-        ${metric('Days tracked', fmt(complete.length), firstFull ? `full scores since ${fmtDate(firstFull)}` : 'starts with the first sync')}
+        ${metric('Days tracked', fmt(complete.length), firstFull ? `since ${fmtDate(firstFull)}` : 'starts with the first refresh')}
       </div>
 
       <hr class="section-divider">
 
       <section class="card">
         <div class="filter-label">Leaderboard</div>
-        <p class="sub">Week, month and all-time rank by average score, the same way GeoSports does, so a missed day doesn’t sink you. Click a player for their full breakdown.</p>
-        <div class="chips" style="margin-bottom:12px">${periodChip('today', 'Today')}${periodChip('week', 'This week')}${periodChip('month', 'This month')}${periodChip('alltime', 'All-time')}</div>
+        <p class="sub">Week, month and season rank by average score, the same way GeoSports does, so a missed day doesn’t sink you. Click a player for their full breakdown.</p>
+        <div class="chips" style="margin-bottom:12px">${periodChip('today', 'Today')}${periodChip('week', 'This week')}${periodChip('month', 'This month')}${periodChip('alltime', 'Season')}</div>
         <div class="scroll-table flat">${leaderboardTable(M)}</div>
       </section>
 
@@ -388,20 +396,20 @@
 
       <section class="card">
         <h3>Daily scores</h3>
-        <p class="sub">One line per player. Gaps are days a player skipped.${M.series[M.me]?.length > complete.length ? ' Your own history goes back further than the group’s, so earlier days show only your line.' : ''}</p>
+        <p class="sub">One line per player. Gaps are days a player skipped.</p>
         <div class="chart-wrap" style="height:360px"><canvas id="c-daily" role="img" aria-label="Daily scores by player"></canvas></div>
       </section>
 
       <div class="row2">
         <section class="card">
           <h3>Days won</h3>
-          <p class="sub">All-time daily wins per player.</p>
+          <p class="sub">Daily wins per player this season.</p>
           <div class="chart-wrap" style="height:280px"><canvas id="c-wins" role="img" aria-label="Days won per player"></canvas></div>
         </section>
         <section class="card">
           <h3>Current form</h3>
-          <p class="sub">Last 7 days average minus all-time average. Right of zero is running hot. Rounds played in brackets.</p>
-          <div class="chart-wrap" style="height:280px"><canvas id="c-form" role="img" aria-label="Recent form versus all-time average"></canvas></div>
+          <p class="sub">Last 7 days average minus season average. Right of zero is running hot. Rounds played in brackets.</p>
+          <div class="chart-wrap" style="height:280px"><canvas id="c-form" role="img" aria-label="Recent form versus season average"></canvas></div>
         </section>
       </div>
 
@@ -490,7 +498,7 @@
 
     const form = shown.map((p) => { const r = M.recent(p.userId, 7); return { p, n: r.length, d: r.length && p.alltime?.avg != null ? Math.round(mean(r) - p.alltime.avg) : null }; }).filter((x) => x.d != null).sort((a, b) => b.d - a.d);
     charts.form = new Chart($('c-form'), { type: 'bar', data: { labels: form.map((x) => `${x.p.name} (${x.n})`), datasets: [{ data: form.map((x) => x.d), backgroundColor: form.map((x) => x.d >= 0 ? 'rgba(47,212,122,0.7)' : 'rgba(255,84,104,0.7)'), borderColor: form.map((x) => x.d >= 0 ? '#2fd47a' : '#ff5468'), borderWidth: 1 }] },
-      options: baseOpts({ indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { ...baseOpts().plugins.tooltip, callbacks: { label: (c) => sign(c.raw) + ' pts vs all-time' } } } }) });
+      options: baseOpts({ indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { ...baseOpts().plugins.tooltip, callbacks: { label: (c) => sign(c.raw) + ' pts vs season' } } } }) });
   }
 
   // ---------- Player analysis ----------
@@ -514,13 +522,13 @@
     const isMe = p.userId === M.me, You = isMe ? 'You' : esc(p.name), you = isMe ? 'you' : esc(p.name);
     const notes = [];
     if (pos >= 0) {
-      if (pos === 0 && ranked[1]) notes.push(['good', `#1 all-time`, `Leads ${esc(ranked[1].name)} by ${fmt(at.avg - ranked[1].alltime.avg)} pts on average.`]);
-      else if (pos > 0) notes.push(['info', `#${pos + 1} of ${ranked.length} all-time`, `${fmt(ranked[pos - 1].alltime.avg - at.avg)} pts behind ${esc(ranked[pos - 1].name)} for #${pos}.${ranked[pos + 1] ? ` ${fmt(at.avg - ranked[pos + 1].alltime.avg)} pts clear of ${esc(ranked[pos + 1].name)}.` : ''}`]);
+      if (pos === 0 && ranked[1]) notes.push(['good', `#1 this season`, `Leads ${esc(ranked[1].name)} by ${fmt(at.avg - ranked[1].alltime.avg)} pts on average.`]);
+      else if (pos > 0) notes.push(['info', `#${pos + 1} of ${ranked.length} this season`, `${fmt(ranked[pos - 1].alltime.avg - at.avg)} pts behind ${esc(ranked[pos - 1].name)} for #${pos}.${ranked[pos + 1] ? ` ${fmt(at.avg - ranked[pos + 1].alltime.avg)} pts clear of ${esc(ranked[pos + 1].name)}.` : ''}`]);
     }
-    if (r7.length >= 2) { const d = mean(r7) - at.avg; notes.push([d >= 15 ? 'good' : d <= -15 ? 'bad' : 'info', d >= 15 ? 'Running hot' : d <= -15 ? 'In a slump' : 'Playing to form', `${fmt(mean(r7))} avg over the last 7 days (${r7.length} rounds), ${sign(d)} vs all-time.${r7.length < 3 ? ' Small sample.' : ''}`]); }
+    if (r7.length >= 2) { const d = mean(r7) - at.avg; notes.push([d >= 15 ? 'good' : d <= -15 ? 'bad' : 'info', d >= 15 ? 'Running hot' : d <= -15 ? 'In a slump' : 'Playing to form', `${fmt(mean(r7))} avg over the last 7 days (${r7.length} rounds), ${sign(d)} vs season.${r7.length < 3 ? ' Small sample.' : ''}`]); }
     else notes.push(['bad', 'Barely played lately', `${r7.length} round${r7.length === 1 ? '' : 's'} in the last 7 days.`]);
     if (winRate != null && groupWin != null) notes.push([winRate >= groupWin ? 'good' : 'neutral', 'Closer rate', `Wins ${fmt(winRate, 1)}% of rounds played. Across the group, ${fmt(groupWin, 1)}% of rounds are wins.`]);
-    if (s.length >= 5) notes.push(['info', 'Consistency', `Tracked rounds swing about ±${fmt(sd(s))} pts. Range ${fmt(worst)} to ${fmt(best)}.`]);
+    if (s.length >= 5) notes.push(['info', 'Consistency', `Rounds swing about ±${fmt(sd(s))} pts. Range ${fmt(worst)} to ${fmt(best)}.`]);
     if (M.series[p.userId].length >= 14) {
       const wd = {}; M.series[p.userId].forEach((x) => { const k = toDate(x.date).getDay(); (wd[k] = wd[k] || []).push(x.score); });
       const avgs = Object.entries(wd).filter(([, v]) => v.length >= 2).map(([k, v]) => [k, mean(v)]).sort((a, b) => b[1] - a[1]);
@@ -555,16 +563,16 @@
       </section>
 
       <h2 class="section-title">${esc(p.name)} · ${p.role === 'owner' ? 'Group owner' : 'Member'}</h2>
-      <p class="section-sub">Joined ${p.memberSince ? fmtDate(p.memberSince, { month: 'long', day: 'numeric', year: 'numeric' }) : '—'}. All-time stats come from GeoSports; trends use ${fmt(s.length)} tracked rounds.</p>
+      <p class="section-sub">Joined ${p.memberSince ? fmtDate(p.memberSince, { month: 'long', day: 'numeric', year: 'numeric' }) : '—'}. Stats cover ${fmt(s.length)} rounds since the season started on ${esc(fmtDate(M.m.start))}.</p>
       <div class="metric-grid four">
-        ${metric('All-time avg', fmt(at.avg), pos >= 0 ? `#${pos + 1} in the group` : 'not ranked')}
-        ${metric('Rounds played', fmt(at.games), `${fmt(p.perfectGames || 0)} perfect`)}
+        ${metric('Season avg', fmt(at.avg), pos >= 0 ? `#${pos + 1} in the group` : 'not ranked')}
+        ${metric('Rounds played', fmt(at.games), `since ${fmtDate(M.m.start)}`)}
         ${metric('Days won', fmt(at.won), winRate != null ? `${fmt(winRate, 1)}% win rate` : '—')}
         ${metric('Current streak', fmt(p.currentStreak || 0) + ' d', p.currentStreak ? 'consecutive days' : 'no active streak')}
-        ${metric('This week', fmt(wk.avg), wk.games ? `<span class="${dWeek >= 0 ? 'up' : 'down'}">${sign(dWeek)}</span> vs all-time · ${wk.games} rounds` : 'no rounds yet')}
+        ${metric('This week', fmt(wk.avg), wk.games ? `<span class="${dWeek >= 0 ? 'up' : 'down'}">${sign(dWeek)}</span> vs season · ${wk.games} rounds` : 'no rounds yet')}
         ${metric('Last 30 days', fmt(mean(r30)), `${r30.length} tracked rounds`)}
-        ${metric('Best tracked', fmt(best), best != null ? fmtDate(M.series[p.userId].find((x) => x.score === best).date) : '—', true)}
-        ${metric('Worst tracked', fmt(worst), worst != null ? fmtDate(M.series[p.userId].find((x) => x.score === worst).date) : '—')}
+        ${metric('Best round', fmt(best), best != null ? fmtDate(M.series[p.userId].find((x) => x.score === best).date) : '—', true)}
+        ${metric('Worst round', fmt(worst), worst != null ? fmtDate(M.series[p.userId].find((x) => x.score === worst).date) : '—')}
       </div>
 
       <section class="card">
@@ -575,15 +583,15 @@
 
       <section class="card">
         <h3>Score trend</h3>
-        <p class="sub">Each tracked round, a 5-round rolling average, and the group’s daily average on full-group days.</p>
+        <p class="sub">Each tracked round, a 5-round rolling average, and the group’s daily average.</p>
         <div class="chart-wrap" style="height:340px"><canvas id="c-trend" role="img" aria-label="Score trend for ${esc(p.name)}"></canvas></div>
       </section>
 
       <div class="row2">
         <section class="card">
           <h3>Head-to-head</h3>
-          <p class="sub">Record on days both played (W-L-T), average margin, and all-time avg gap.</p>
-          <div class="scroll-table flat"><table><thead><tr><th>Opponent</th><th>Record</th><th class="num">Days</th><th class="num">Margin</th><th class="num">${isMe ? 'You' : esc(p.name)}</th><th class="num">Opp</th><th class="num">All-time</th></tr></thead><tbody>${h2hRows}</tbody></table></div>
+          <p class="sub">Record on days both played (W-L-T), average margin, and season avg gap.</p>
+          <div class="scroll-table flat"><table><thead><tr><th>Opponent</th><th>Record</th><th class="num">Days</th><th class="num">Margin</th><th class="num">${isMe ? 'You' : esc(p.name)}</th><th class="num">Opp</th><th class="num">Season</th></tr></thead><tbody>${h2hRows}</tbody></table></div>
         </section>
         <section class="card">
           <h3>Score distribution</h3>
@@ -659,26 +667,45 @@
   }
   const num = (v) => { if (v === '' || v == null) return null; const n = Number(String(v).replace(/,/g, '')); return Number.isFinite(n) ? n : null; };
 
+  // Every stat is calculated from the Daily Scores tab, starting on the tracking start date.
+  function dayOffset(s, n) { const [y, m, d] = s.split('-').map(Number); const t = new Date(y, m - 1, d + n, 12); return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0'); }
+  function computeStats(roster, days, asOf) {
+    const winners = {};
+    days.forEach((d) => { const v = Object.values(d.scores); if (!v.length) return; const top = Math.max(...v); winners[d.date] = Object.keys(d.scores).filter((id) => d.scores[id] === top); });
+    const [y, m, dd] = asOf.split('-').map(Number);
+    const weekStart = dayOffset(asOf, -((new Date(y, m - 1, dd, 12).getDay() + 6) % 7)); // weeks run Monday to Sunday
+    const monthStart = asOf.slice(0, 8) + '01';
+    const stat = (uid, from) => {
+      const s = days.filter((d) => d.date >= from && d.date <= asOf && d.scores[uid] != null);
+      const games = s.length;
+      return { avg: games ? s.reduce((t, d) => t + d.scores[uid], 0) / games : null, games, won: s.filter((d) => (winners[d.date] || []).includes(uid)).length };
+    };
+    const played = (uid, date) => days.some((d) => d.date === date && d.scores[uid] != null);
+    return roster.map((r) => {
+      let streak = 0, cur = played(r.userId, asOf) ? asOf : dayOffset(asOf, -1);
+      while (played(r.userId, cur)) { streak++; cur = dayOffset(cur, -1); }
+      const today = days.find((d) => d.date === asOf);
+      return { ...r, currentStreak: streak, week: stat(r.userId, weekStart), month: stat(r.userId, monthStart), alltime: stat(r.userId, '0000-00-00'), todayScore: today?.scores[r.userId] ?? null };
+    });
+  }
+
   async function loadSheet() {
     const [players, info, daily] = await Promise.all([fetchTab('Players'), fetchTab('Info'), fetchTab('Daily Scores')]);
     const I = Object.fromEntries(info.map((r) => [r.Field, r.Value]));
-    const members = players.filter((p) => p['User ID']).map((p) => ({
-      userId: p['User ID'], name: p.Player, role: p.Role, memberSince: p['Member since'],
-      currentStreak: num(p['Current streak']) ?? 0, perfectGames: num(p['Perfect games']) ?? 0,
-      week: { avg: num(p['Week avg']), games: num(p['Week rounds']) ?? 0, won: num(p['Week wins']) ?? 0 },
-      month: { avg: num(p['Month avg']), games: num(p['Month rounds']) ?? 0, won: num(p['Month wins']) ?? 0 },
-      alltime: { avg: num(p['All-time avg']), games: num(p['All-time rounds']) ?? 0, won: num(p['All-time wins']) ?? 0 },
-      todayScore: num(p['Today score'])
-    }));
-    const idByName = Object.fromEntries(members.map((m) => [m.name, m.userId]));
-    const days = daily.filter((r) => /^\d{4}-\d{2}-\d{2}$/.test(r.Date)).map((r) => {
+    const start = I['Tracking starts'] || '2026-10-02';
+    const roster = players.filter((p) => p['User ID']).map((p) => ({ userId: p['User ID'], name: p.Player, role: p.Role, memberSince: p['Member since'] }));
+    const idByName = Object.fromEntries(roster.map((m) => [m.name, m.userId]));
+    const days = daily.filter((r) => /^\d{4}-\d{2}-\d{2}$/.test(r.Date) && r.Date >= start).map((r) => {
       const scores = {};
       Object.entries(r).forEach(([k, v]) => { const id = idByName[k]; const n = num(v); if (id && n != null) scores[id] = n; });
-      return { date: r.Date, complete: String(r['Full group day']).toLowerCase() === 'yes', scores };
-    });
+      return { date: r.Date, complete: true, scores };
+    }).filter((d) => Object.keys(d.scores).length);
+    const lastDay = days.length ? days.map((d) => d.date).sort().pop() : null;
+    const asOf = [I['GeoSports day'], lastDay].filter(Boolean).sort().pop() || start;
+    const members = computeStats(roster, days, asOf);
     S.meta = {
-      group: { name: I['Group'] || 'GeoSports', code: I['Group code'] || '' },
-      date: I['GeoSports day'], fetchedAt: I['Last refreshed (UTC)'], currentUserId: I['Dashboard owner user ID'],
+      group: { name: I['Group'] || 'GeoSports', code: I['Group code'] || '' }, start,
+      date: asOf, fetchedAt: I['Last refreshed (UTC)'], currentUserId: I['Dashboard owner user ID'],
       members, today: members.filter((m) => m.todayScore != null).map((m) => ({ userId: m.userId, score: m.todayScore }))
     };
     S.days = days;
