@@ -1,0 +1,701 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Live GeoSports scoreboard for the FV Ball Knowers group: leaderboards, daily scores, records and head-to-head scouting.">
+<meta property="og:title" content="FV Ball Knowers Scoreboard">
+<meta property="og:description" content="Live GeoSports scoreboard for the FV Ball Knowers group: leaderboards, daily scores, records and head-to-head scouting.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://maximhoeft94.github.io/geosports-dashboard/">
+<meta property="og:image" content="https://maximhoeft94.github.io/geosports-dashboard/screenshots/overview.png">
+<meta name="twitter:card" content="summary_large_image">
+<title>FV Ball Knowers Scoreboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* Layout: night-game broadcast. Scoreboard header bar, segmented tabs, panels with a slanted score-bug label, LED-amber numbers over turf-striped navy. Deliberately dark-only. */
+  :root {
+    color-scheme: dark;
+    --night: #0a1120;          /* stadium night sky */
+    --panel: #111a2c;          /* broadcast panel */
+    --panel-hi: #17233a;
+    --inset: #0c1424;
+    --chalk: #eef2f7;          /* chalk line white */
+    --muted: #8d9bb4;
+    --faint: #5d6b85;
+    --amber: #ffb81c;          /* scoreboard LED */
+    --turf: #2fd47a;           /* turf green, wins / up */
+    --red: #ff5468;            /* losses / down */
+    --line: rgba(238, 242, 247, 0.08);
+    --line-strong: rgba(238, 242, 247, 0.18);
+    --font-display: 'Big Shoulders Display', 'Barlow Condensed', 'Arial Narrow', sans-serif;
+    --font-cond: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+    --font-body: 'Barlow', 'Segoe UI', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--night); overflow-x: hidden; }
+  body {
+    margin: 0; color: var(--chalk);
+    font-family: var(--font-body); font-size: 16px; font-weight: 500; line-height: 1.45; -webkit-font-smoothing: antialiased;
+    background:
+      radial-gradient(ellipse 70% 40% at 15% -5%, rgba(255,255,255,0.07), transparent 70%),
+      radial-gradient(ellipse 70% 40% at 85% -5%, rgba(255,255,255,0.06), transparent 70%),
+      repeating-linear-gradient(90deg, rgba(47,212,122,0.025) 0 90px, transparent 90px 180px),
+      var(--night);
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+  button { font: inherit; }
+  :focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+  /* Header: scoreboard bar */
+  header {
+    position: relative; z-index: 2;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;
+    padding: 14px 28px;
+    background: linear-gradient(180deg, #131e33, #0d1628);
+    border-bottom: 3px solid var(--amber);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  }
+  .brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
+  .badge { flex: none; display: grid; place-items: center; width: 52px; height: 52px; background: var(--amber); color: var(--night);
+    font-family: var(--font-display); font-weight: 900; font-size: 18px; letter-spacing: 0;
+    clip-path: polygon(0 0, 100% 0, 100% 78%, 50% 100%, 0 78%); }
+  header h1 { margin: 0; font-family: var(--font-display); font-size: 30px; font-weight: 800; letter-spacing: 1px; line-height: 1;
+    text-transform: uppercase; color: var(--chalk); text-wrap: balance; }
+  header h1 .accent { color: var(--amber); }
+  header .subtitle { display: block; font-family: var(--font-cond); font-size: 14px; font-weight: 600; letter-spacing: 2.5px; color: var(--muted); margin-top: 6px; text-transform: uppercase; }
+  header .meta { display: flex; align-items: center; gap: 12px; font-family: var(--font-cond); font-size: 16px; font-weight: 600; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; }
+  header .meta #meta-line::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--red); margin-right: 8px; vertical-align: 1px; box-shadow: 0 0 8px var(--red); }
+
+  .btn { border: 0; cursor: pointer; background: var(--amber); color: var(--night); font-family: var(--font-cond); font-size: 15px; font-weight: 700; letter-spacing: 1.5px;
+    padding: 7px 16px; text-transform: uppercase; transform: skewX(-10deg); }
+  .btn:hover { background: #ffc94d; }
+  .btn:active { transform: skewX(-10deg) translateY(1px); }
+
+  main { max-width: 1200px; margin: 0 auto; padding: 0 16px; padding-block: 0 60px; position: relative; z-index: 1; }
+
+  /* Tabs: segmented scoreboard */
+  .tab-bar { display: inline-flex; margin: 20px 0 18px; background: var(--inset); border: 1px solid var(--line-strong); }
+  .tab-btn { border: 0; cursor: pointer; background: transparent; color: var(--muted); font-family: var(--font-display); font-size: 17px; font-weight: 800; letter-spacing: 1.5px;
+    padding: 10px 24px; text-transform: uppercase; transition: color .15s ease, background .15s ease; }
+  .tab-btn:hover { color: var(--chalk); }
+  .tab-btn.active { background: var(--amber); color: var(--night); }
+
+  /* Panels */
+  .card, .metric-card, .item { position: relative; background: var(--panel); border: 1px solid var(--line); min-width: 0; }
+  .card { padding: 18px 22px; margin-bottom: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+  .card h3, .filter-label, .collapsible > .card-toggle {
+    font-family: var(--font-display); font-size: 21px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: var(--chalk); margin: 0 0 4px; line-height: 1.1;
+  }
+  .card h3::before, .filter-label::before { content: ''; display: inline-block; width: 7px; height: 17px; background: var(--amber); margin-right: 10px; transform: skewX(-15deg); vertical-align: -1px; }
+  .filter-label { font-size: 17px; margin: 18px 0 10px; }
+  .filter-label:first-child { margin-top: 0; }
+  .sub, .section-sub { font-size: 15px; color: var(--muted); margin: 0 0 12px; max-width: 75ch; }
+
+  .collapsible > .card-toggle { all: unset; display: flex; width: 100%; justify-content: space-between; align-items: center; cursor: pointer;
+    font-family: var(--font-display); font-size: 21px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; }
+  .collapsible > .card-toggle::after { content: '▾'; font-family: var(--font-body); font-size: 16px; color: var(--muted); transition: transform .15s ease; }
+  .collapsible.collapsed > .card-toggle::after { transform: rotate(-90deg); }
+  .collapsible.collapsed .card-body { display: none; }
+  .collapsible .card-body { margin-top: 14px; }
+  .collapsible.collapsed { padding-block: 14px; }
+  .bests { background: linear-gradient(120deg, rgba(255,184,28,0.13), rgba(255,184,28,0.02) 60%), var(--panel); border-color: rgba(255,184,28,0.35); border-top: 3px solid var(--amber); }
+  .bests > .card-toggle { color: var(--amber); }
+  .oddities { background: linear-gradient(120deg, rgba(255,84,104,0.12), rgba(255,84,104,0.02) 60%), var(--panel); border-color: rgba(255,84,104,0.3); border-top: 3px solid var(--red); }
+  .oddities > .card-toggle { color: #ff8a99; }
+
+  .section-title { display: inline-block; font-family: var(--font-display); font-size: 26px; font-weight: 900; letter-spacing: 1px; color: var(--night); background: var(--chalk);
+    text-transform: uppercase; margin: 26px 0 8px; padding: 2px 16px 0; transform: skewX(-10deg); line-height: 1.25; }
+  .section-divider { height: 0; margin: 26px 0; border: 0; border-top: 2px dashed rgba(238,242,247,0.18); }
+
+  /* Chips: jersey pills */
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { border: 1px solid var(--line-strong); border-radius: 999px; cursor: pointer; background: var(--panel-hi); color: var(--chalk);
+    font-family: var(--font-cond); font-size: 15px; font-weight: 600; letter-spacing: 0.8px; padding: 4px 14px; text-transform: uppercase; transition: background .15s ease, border-color .15s ease; }
+  .chip:hover { border-color: var(--chalk); }
+  .chip.active { background: var(--turf); border-color: var(--turf); color: var(--night); }
+  .chip .n { color: var(--amber); margin-left: 6px; font-weight: 500; }
+  .chip.active .n { color: rgba(10,17,32,0.7); }
+  .chip .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 7px; vertical-align: 0; box-shadow: 0 0 0 1px rgba(0,0,0,0.3); }
+
+  /* Metrics: scoreboard tiles */
+  .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-bottom: 12px; }
+  .metric-grid.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .metric-card { padding: 12px 16px 14px; background: linear-gradient(180deg, var(--panel-hi), var(--panel)); border-top: 3px solid var(--line-strong); }
+  .metric-label { font-family: var(--font-cond); font-size: 14px; font-weight: 700; letter-spacing: 1.5px; color: var(--muted); text-transform: uppercase; margin: 0 0 2px; }
+  .metric-value { font-family: var(--font-display); font-size: 36px; font-weight: 800; letter-spacing: 0.5px; color: var(--chalk); font-variant-numeric: tabular-nums;
+    margin: 0; line-height: 1.05; overflow-wrap: anywhere; }
+  .metric-value.gold { color: var(--amber); }
+  .metric-value.name { font-size: 26px; line-height: 1.15; overflow-wrap: normal; word-break: normal; }
+  .metric-sub { font-size: 13px; color: var(--faint); margin: 4px 0 0; }
+  .up { color: var(--turf); } .down { color: var(--red); }
+
+  .item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+  .item { padding: 12px 14px; background: rgba(10,17,32,0.6); }
+  .bests .item { border-left: 3px solid var(--amber); }
+  .oddities .item.trophy { border-left: 3px solid var(--turf); }
+  .oddities .item.shame { border-left: 3px solid var(--red); }
+  .item .lbl { font-family: var(--font-cond); font-size: 13px; font-weight: 700; letter-spacing: 1.5px; color: var(--muted); text-transform: uppercase; }
+  .item .val { font-family: var(--font-display); font-size: 30px; font-weight: 800; color: var(--amber); font-variant-numeric: tabular-nums; line-height: 1.05; margin: 2px 0; overflow-wrap: anywhere; }
+  .oddities .item .val { color: var(--chalk); }
+  .item .who { color: var(--chalk); font-weight: 700; }
+  .item .s { font-size: 13px; color: var(--faint); }
+
+  /* Charts + tables */
+  .row2 { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 16px; }
+  .row2 > .card { margin-bottom: 0; }
+  .row2 + * { margin-top: 16px; }
+  .chart-wrap { position: relative; width: 100%; background: var(--inset); border: 1px solid var(--line); padding: 10px; }
+  .chart-wrap canvas { max-width: 100%; }
+  .scroll-table { overflow: auto; max-height: 560px; border: 1px solid var(--line); background: var(--inset); scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+  .scroll-table.flat { max-height: none; }
+  table { width: 100%; border-collapse: collapse; font-size: 15px; font-variant-numeric: tabular-nums; }
+  th { text-align: left; padding: 8px 10px; color: var(--night); background: var(--chalk); font-family: var(--font-cond); font-weight: 700; font-size: 14px; letter-spacing: 1.2px;
+    text-transform: uppercase; position: sticky; top: 0; z-index: 1; white-space: nowrap; }
+  th.num, td.num { text-align: right; }
+  td { padding: 7px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  tbody tr:nth-child(even) td { background: rgba(238,242,247,0.02); }
+  tbody tr:hover td { background: rgba(255,184,28,0.07); }
+  tr.me td { background: rgba(47,212,122,0.08) !important; }
+  tr.clickable { cursor: pointer; }
+  .rank { font-family: var(--font-display); font-size: 20px; font-weight: 800; color: var(--amber); }
+  .player-cell { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+  .swatch { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .crown { font-family: var(--font-cond); font-size: 11px; font-weight: 700; letter-spacing: 1px; color: var(--night); background: var(--amber); padding: 0 5px; }
+  .pill { display: inline-block; padding: 0 9px; font-family: var(--font-cond); font-weight: 700; font-size: 14px; letter-spacing: 1px; border-radius: 999px; }
+  .pill-w { background: var(--turf); color: var(--night); }
+  .pill-l { background: var(--red); color: var(--night); }
+  .pill-t { background: var(--amber); color: var(--night); }
+  .score-cell.win { color: var(--amber); font-weight: 800; }
+  .dim { color: var(--faint); }
+  .spark { display: block; }
+
+  .notes { display: grid; gap: 8px; }
+  .note { padding: 10px 14px; background: rgba(10,17,32,0.6); border: 1px solid var(--line); border-left: 4px solid var(--faint); }
+  .note.good { border-left-color: var(--turf); } .note.bad { border-left-color: var(--red); } .note.info { border-left-color: var(--amber); }
+  .note b { display: block; font-family: var(--font-cond); font-weight: 700; letter-spacing: 1.2px; color: var(--chalk); text-transform: uppercase; font-size: 16px; }
+  .note span { color: var(--muted); font-size: 15px; }
+
+  .empty-state { text-align: center; padding: 48px 16px; color: var(--muted); }
+  .empty-state h2 { font-family: var(--font-display); font-size: 26px; font-weight: 800; color: var(--amber); margin: 0 0 10px; text-transform: uppercase; }
+  .empty-state p { max-width: 52ch; margin: 0 auto; }
+  .tag-live { font-family: var(--font-cond); font-size: 11px; font-weight: 700; letter-spacing: 1.5px; color: #fff; background: var(--red); padding: 1px 6px; margin-left: 8px; vertical-align: 1px; }
+
+  @media (max-width: 720px) {
+    body { font-size: 15px; }
+    header { padding: 12px 16px; }
+    .badge { width: 42px; height: 42px; font-size: 16px; }
+    header h1 { font-size: 22px; }
+    header .subtitle { font-size: 12px; letter-spacing: 1.5px; }
+    header .meta { width: 100%; justify-content: space-between; font-size: 14px; }
+    .tab-bar { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
+    .tab-btn { font-size: 15px; padding: 10px 6px; }
+    .card { padding: 14px 12px; }
+    .row2 { grid-template-columns: minmax(0,1fr); }
+    .metric-grid, .metric-grid.four { grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; }
+    .metric-value { font-size: 28px; }
+    .item-grid { grid-template-columns: repeat(2, minmax(0,1fr)); gap: 6px; }
+    .item .val { font-size: 24px; }
+    .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px;
+      mask-image: linear-gradient(90deg, #000 88%, transparent); -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); }
+    .chips::-webkit-scrollbar { display: none; }
+    .chip { flex: 0 0 auto; }
+    .section-title { font-size: 21px; }
+    table { font-size: 14px; } td, th { padding: 6px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  .foot { margin-top: 28px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--faint); font-size: 14px; text-align: center; }
+  .foot a { color: var(--muted); }
+  .foot a:hover { color: var(--amber); }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="badge" aria-hidden="true">FVBK</div>
+    <div>
+      <h1 id="title">FV Ball Knowers <span class="accent">Scoreboard</span></h1>
+      <span class="subtitle" id="subtitle">GeoSports group UNK67F · daily results</span>
+    </div>
+  </div>
+  <div class="meta"><span id="meta-line">Waiting for data…</span><button class="btn" id="sync-btn" type="button">↻ Sync</button></div>
+</header>
+
+<main>
+  <nav class="tab-bar" role="tablist">
+    <button class="tab-btn active" type="button" role="tab" id="tab-overview" data-tab="overview" aria-selected="true">Overview</button>
+    <button class="tab-btn" type="button" role="tab" id="tab-player" data-tab="player" aria-selected="false">Player Analysis</button>
+  </nav>
+
+  <div id="app">
+    <div class="card empty-state">
+      <h2>Loading scores</h2>
+      <p>Loading standings, daily scores and head-to-head records from the group’s Google Sheet…</p>
+    </div>
+  </div>
+  <footer class="foot">Scores from <a href="https://geosports.app" target="_blank" rel="noopener">GeoSports</a> · data in the <a href="https://docs.google.com/spreadsheets/d/14_UcW_n_3UEfPEcJvCrGHoerbHL54HZuETPOhZUvBZ4/edit" target="_blank" rel="noopener">group’s Google Sheet</a></footer>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+(function () {
+  'use strict';
+  const PALETTE = ['#ffb81c', '#2fd47a', '#4cc3ff', '#ff5468', '#a98bff', '#ff8a3d', '#ff7ac6', '#22d3c5'];
+  const S = { meta: null, days: [], tab: 'overview', period: 'week', players: new Set(), range: '30', focus: null, open: { bests: true, odd: true } };
+  const charts = {};
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const fmt = (n, d = 0) => (n == null || isNaN(n)) ? '—' : Number(n).toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
+  const sign = (n, d = 0) => (n == null || isNaN(n)) ? '—' : (n > 0 ? '+' : n < 0 ? '−' : '±') + fmt(Math.abs(n), d);
+  const toDate = (s) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d, 12); };
+  const fmtDate = (s, o) => toDate(s).toLocaleDateString(undefined, o || { month: 'short', day: 'numeric' });
+  const addDays = (s, n) => { const d = toDate(s); d.setDate(d.getDate() + n); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+  const mean = (a) => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
+  const sd = (a) => { if (a.length < 2) return null; const m = mean(a); return Math.sqrt(a.reduce((s, x) => s + (x - m) ** 2, 0) / (a.length - 1)); };
+
+  try { const t = localStorage.getItem('gs-tab'); if (t === 'player') S.tab = 'player'; } catch (e) {}
+
+  // ---------- Model ----------
+  function model() {
+    const m = S.meta;
+    const members = [...(m.members || [])].sort((a, b) => (b.alltime?.avg ?? -1) - (a.alltime?.avg ?? -1))
+      .map((p, i) => ({ ...p, color: PALETTE[i % PALETTE.length] }));
+    const byId = Object.fromEntries(members.map((p) => [p.userId, p]));
+    const days = [...S.days].filter((d) => d && d.date).sort((a, b) => a.date < b.date ? -1 : 1);
+    const complete = days.filter((d) => d.complete).map((d) => {
+      const e = Object.entries(d.scores || {}).filter(([id, v]) => v != null && byId[id]).sort((a, b) => b[1] - a[1]);
+      const top = e.length ? e[0][1] : null;
+      return { ...d, entries: e, top, winners: e.filter((x) => x[1] === top).map((x) => x[0]),
+        margin: e.length > 1 ? top - e[1][1] : null, avg: mean(e.map((x) => x[1])), low: e.length ? e[e.length - 1] : null };
+    });
+    const series = {};
+    members.forEach((p) => { series[p.userId] = days.filter((d) => d.scores && d.scores[p.userId] != null).map((d) => ({ date: d.date, score: d.scores[p.userId] })); });
+    const asOf = m.date || (days.length ? days[days.length - 1].date : new Date().toISOString().slice(0, 10));
+    const recent = (uid, n) => series[uid].filter((x) => x.date > addDays(asOf, -n)).map((x) => x.score);
+    return { m, members, byId, days, complete, series, asOf, recent, me: m.currentUserId };
+  }
+
+  // ---------- Render shell ----------
+  function render() {
+    document.querySelectorAll('.tab-btn').forEach((b) => { const on = b.dataset.tab === S.tab; b.classList.toggle('active', on); b.setAttribute('aria-selected', on); });
+    if (!S.meta || !S.meta.members) return;
+    const M = model();
+    if (!S.focus || !M.byId[S.focus]) S.focus = M.byId[M.me] ? M.me : M.members[0]?.userId;
+    $('title').innerHTML = esc(M.m.group?.name || 'GeoSports') + ' <span class="accent">Scoreboard</span>';
+    $('subtitle').textContent = 'GeoSports group ' + (M.m.group?.code || '') + ' · daily results';
+    const synced = M.m.fetchedAt ? new Date(M.m.fetchedAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—';
+    $('meta-line').textContent = M.complete.length + ' days tracked · synced ' + synced;
+    Object.values(charts).forEach((c) => c.destroy()); for (const k in charts) delete charts[k];
+    $('app').innerHTML = S.tab === 'overview' ? overviewHTML(M) : playerHTML(M);
+    if (S.tab === 'overview') overviewCharts(M); else playerCharts(M);
+  }
+
+  // ---------- Overview ----------
+  function overviewHTML(M) {
+    const { members, complete, series, byId } = M;
+    const totalGames = members.reduce((s, p) => s + (p.alltime?.games || 0), 0);
+    const groupAvg = totalGames ? members.reduce((s, p) => s + (p.alltime?.avg || 0) * (p.alltime?.games || 0), 0) / totalGames : null;
+    const todayRows = (M.m.today || []).filter((r) => r.score != null).sort((a, b) => b.score - a.score);
+    const leader = todayRows[0];
+    const activeWeek = members.filter((p) => (p.week?.games || 0) > 0).length;
+    const name = (id) => esc(byId[id]?.name || '?');
+
+    // bests
+    const by = (f) => [...members].filter((p) => f(p) != null).sort((a, b) => f(b) - f(a))[0];
+    const bAvg = by((p) => p.alltime?.avg), bWon = by((p) => p.alltime?.won), bStreak = by((p) => p.currentStreak), bGames = by((p) => p.alltime?.games), bWeek = by((p) => p.week?.avg);
+    // Group comparisons only use full-group days, so no one's longer personal history skews them.
+    let hi = null; complete.forEach((d) => d.entries.forEach(([id, sc]) => { if (!hi || sc > hi.score) hi = { date: d.date, score: sc, id }; }));
+    const bests = [
+      bAvg && ['Best all-time avg', fmt(bAvg.alltime.avg), bAvg.name, `over ${fmt(bAvg.alltime.games)} games`],
+      hi && ['Highest round', fmt(hi.score), byId[hi.id].name, fmtDate(hi.date, { month: 'short', day: 'numeric' }) + ' · full-group days'],
+      bWon && ['Most days won', fmt(bWon.alltime.won), bWon.name, `${fmt(100 * bWon.alltime.won / bWon.alltime.games, 0)}% of games played`],
+      bStreak && ['Longest active streak', fmt(bStreak.currentStreak) + ' days', bStreak.name, 'as reported by GeoSports'],
+      bGames && ['Most rounds played', fmt(bGames.alltime.games), bGames.name, `member since ${fmtDate(bGames.memberSince, { month: 'short', year: 'numeric' })}`],
+      bWeek && ['Best avg this week', fmt(bWeek.week.avg), bWeek.name, `${bWeek.week.games} rounds`],
+    ].filter(Boolean);
+
+    // oddities
+    const withM = complete.filter((d) => d.margin != null && d.date < M.asOf); // today's result isn't final until everyone can play
+    const blow = [...withM].sort((a, b) => b.margin - a.margin)[0];
+    const close = [...withM].sort((a, b) => a.margin - b.margin)[0];
+    let low = null; complete.forEach((d) => { if (d.low && (!low || d.low[1] < low.score)) low = { id: d.low[0], score: d.low[1], date: d.date }; });
+    let swing = null;
+    const full = new Set(complete.map((d) => d.date));
+    members.forEach((p) => { const s = series[p.userId].filter((x) => full.has(x.date)); for (let i = 1; i < s.length; i++) { if (s[i].date !== addDays(s[i - 1].date, 1)) continue; const dlt = s[i].score - s[i - 1].score; if (!swing || Math.abs(dlt) > Math.abs(swing.d)) swing = { id: p.userId, d: dlt, date: s[i].date }; } });
+    const formRows = members.map((p) => { const r = M.recent(p.userId, 7); return { p, n: r.length, delta: r.length && p.alltime?.avg != null ? mean(r) - p.alltime.avg : null }; }).filter((x) => x.n >= 3 && x.delta != null);
+    const hot = [...formRows].sort((a, b) => b.delta - a.delta)[0], cold = [...formRows].sort((a, b) => a.delta - b.delta)[0];
+    const wr = members.filter((p) => (p.alltime?.games || 0) >= 20).sort((a, b) => b.alltime.won / b.alltime.games - a.alltime.won / a.alltime.games)[0];
+    const mia = members.filter((p) => !(p.week?.games));
+    const odd = [
+      blow && ['trophy', 'Biggest blowout', '+' + fmt(blow.margin), blow.winners.map(name).join(' & '), `won ${fmtDate(blow.date)} with ${fmt(blow.top)}`],
+      close && ['trophy', 'Photo finish', close.margin === 0 ? 'Tie' : '+' + fmt(close.margin), close.winners.map(name).join(' & '), `edged it ${fmtDate(close.date)}`],
+      hot && hot.delta > 0 && ['trophy', 'Hot hand', sign(hot.delta), esc(hot.p.name), `last 7 days (${hot.n} rounds) vs all-time avg`],
+      wr && ['trophy', 'The closer', fmt(100 * wr.alltime.won / wr.alltime.games, 1) + '%', esc(wr.name), `${wr.alltime.won} wins in ${wr.alltime.games} rounds`],
+      low && ['shame', 'Rough round', fmt(low.score), name(low.id), `lowest group score, ${fmtDate(low.date)}`],
+      swing && ['shame', 'Wildest swing', sign(swing.d), name(swing.id), `day-over-day, ${fmtDate(swing.date)}`],
+      cold && cold.delta < 0 && ['shame', 'Ice cold', sign(cold.delta), esc(cold.p.name), `last 7 days (${cold.n} rounds) vs all-time avg`],
+      mia.length && ['shame', 'Scratched', mia.length + (mia.length === 1 ? ' player' : ' players'), mia.map((p) => esc(p.name)).join(', '), 'no rounds this week'],
+    ].filter(Boolean);
+
+    const periodChip = (k, l) => `<button type="button" class="chip${S.period === k ? ' active' : ''}" data-period="${k}">${l}</button>`;
+    const rangeChip = (k, l) => `<button type="button" class="chip${S.range === k ? ' active' : ''}" data-range="${k}">${l}</button>`;
+    const allOn = S.players.size === 0;
+    const playerChips = `<button type="button" class="chip${allOn ? ' active' : ''}" data-player="all">All players<span class="n">×${members.length}</span></button>` +
+      members.map((p) => `<button type="button" class="chip${S.players.has(p.userId) ? ' active' : ''}" data-player="${esc(p.userId)}"><span class="dot" style="background:${p.color}"></span>${esc(p.name)}<span class="n">×${fmt(p.alltime?.games)}</span></button>`).join('');
+
+    const firstFull = complete[0]?.date;
+    return `
+      <section class="card collapsible bests${S.open.bests ? '' : ' collapsed'}" data-col="bests">
+        <button type="button" class="card-toggle" aria-expanded="${S.open.bests}">Record Book</button>
+        <div class="card-body"><div class="item-grid">${bests.map(([l, v, w, s]) => `<div class="item"><div class="lbl">${l}</div><div class="val">${v}</div><div class="who">${esc(w)}</div><div class="s">${esc(s)}</div></div>`).join('')}</div></div>
+      </section>
+      <section class="card collapsible oddities${S.open.odd ? '' : ' collapsed'}" data-col="odd">
+        <button type="button" class="card-toggle" aria-expanded="${S.open.odd}">Highlight Reel &amp; Bloopers</button>
+        <div class="card-body"><div class="item-grid">${odd.map(([k, l, v, w, s]) => `<div class="item ${k}"><div class="lbl">${l}</div><div class="val">${v}</div><div class="who">${w}</div><div class="s">${esc(s)}</div></div>`).join('')}</div>
+        <p class="sub" style="margin:12px 0 0">Group records only count days with everyone’s scores${firstFull ? ' (since ' + fmtDate(firstFull) + ')' : ''}. Blowouts and photo finishes wait until a day is over. Hot hand and ice cold need 3+ rounds in the last 7 days.</p></div>
+      </section>
+
+      <h2 class="section-title">Season Totals</h2>
+      <p class="section-sub">Lifetime group totals from GeoSports. Not affected by filters.</p>
+      <div class="metric-grid">
+        ${metric('Members', fmt(members.length), `${activeWeek} played this week`)}
+        ${metric('Rounds played', fmt(totalGames), 'all members, all-time')}
+        ${metric('Group avg', fmt(groupAvg), 'per round, all members')}
+        ${metric('Days won', fmt(members.reduce((s, p) => s + (p.alltime?.won || 0), 0)), `${fmt(100 * members.reduce((s, p) => s + (p.alltime?.won || 0), 0) / (totalGames || 1), 1)}% of all rounds`)}
+        ${metric("Today's leader", leader ? esc(byId[leader.userId]?.name || '?') : '—', leader ? `${fmt(leader.score)} · ${todayRows.length} of ${members.length} played` : 'no rounds yet today', true, true)}
+        ${metric('Days tracked', fmt(complete.length), firstFull ? `full scores since ${fmtDate(firstFull)}` : 'starts with the first sync')}
+      </div>
+
+      <hr class="section-divider">
+
+      <section class="card">
+        <div class="filter-label">Leaderboard</div>
+        <p class="sub">Week, month and all-time rank by average score, the same way GeoSports does, so a missed day doesn’t sink you. Click a player for their full breakdown.</p>
+        <div class="chips" style="margin-bottom:12px">${periodChip('today', 'Today')}${periodChip('week', 'This week')}${periodChip('month', 'This month')}${periodChip('alltime', 'All-time')}</div>
+        <div class="scroll-table flat">${leaderboardTable(M)}</div>
+      </section>
+
+      <section class="card">
+        <div class="filter-label">Player filter</div>
+        <p class="sub">Pick players to compare in the charts below. Click again or “All players” to clear.</p>
+        <div class="chips">${playerChips}</div>
+        <div class="filter-label">Time range</div>
+        <div class="chips">${rangeChip('7', 'Last 7 days')}${rangeChip('30', 'Last 30 days')}${rangeChip('all', 'All tracked')}</div>
+      </section>
+
+      <section class="card">
+        <h3>Daily scores</h3>
+        <p class="sub">One line per player. Gaps are days a player skipped.${M.series[M.me]?.length > complete.length ? ' Your own history goes back further than the group’s, so earlier days show only your line.' : ''}</p>
+        <div class="chart-wrap" style="height:360px"><canvas id="c-daily" role="img" aria-label="Daily scores by player"></canvas></div>
+      </section>
+
+      <div class="row2">
+        <section class="card">
+          <h3>Days won</h3>
+          <p class="sub">All-time daily wins per player.</p>
+          <div class="chart-wrap" style="height:280px"><canvas id="c-wins" role="img" aria-label="Days won per player"></canvas></div>
+        </section>
+        <section class="card">
+          <h3>Current form</h3>
+          <p class="sub">Last 7 days average minus all-time average. Right of zero is running hot. Rounds played in brackets.</p>
+          <div class="chart-wrap" style="height:280px"><canvas id="c-form" role="img" aria-label="Recent form versus all-time average"></canvas></div>
+        </section>
+      </div>
+
+      <section class="card">
+        <h3>Daily results</h3>
+        <p class="sub">Every tracked day, newest first. The day’s top score is highlighted.</p>
+        <div class="scroll-table">${resultsTable(M)}</div>
+      </section>`;
+  }
+
+  function metric(label, value, sub, gold, isName) {
+    return `<div class="metric-card"><p class="metric-label">${label}</p><p class="metric-value${gold ? ' gold' : ''}${isName ? ' name' : ''}">${value}</p><p class="metric-sub">${sub}</p></div>`;
+  }
+
+  function spark(M, uid) {
+    const pts = []; for (let i = 6; i >= 0; i--) { const d = addDays(M.asOf, -i); const day = M.days.find((x) => x.date === d); pts.push(day?.scores?.[uid] ?? null); }
+    const w = 84, h = 22, lo = 500, hi = 1000;
+    const xy = pts.map((v, i) => v == null ? null : [3 + i * (w - 6) / 6, h - 3 - (Math.max(lo, Math.min(hi, v)) - lo) / (hi - lo) * (h - 6)]);
+    let path = '', pen = false; xy.forEach((p) => { if (!p) { pen = false; return; } path += (pen ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1); pen = true; });
+    const dots = xy.map((p, i) => p ? `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${i === 6 ? 2.6 : 1.6}" fill="${i === 6 ? '#ffb81c' : '#2fd47a'}"/>` : `<circle cx="${(3 + i * (w - 6) / 6).toFixed(1)}" cy="${h - 3}" r="1" fill="#5d6b85"/>`).join('');
+    return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true"><path d="${path}" fill="none" stroke="#2fd47a" stroke-opacity="0.7" stroke-width="1.4"/>${dots}</svg>`;
+  }
+
+  function leaderboardTable(M) {
+    let rows;
+    if (S.period === 'today') {
+      const t = Object.fromEntries((M.m.today || []).map((r) => [r.userId, r.score]));
+      rows = M.members.map((p) => ({ p, v: t[p.userId] ?? null, g: t[p.userId] != null ? 1 : 0, w: null }));
+    } else rows = M.members.map((p) => ({ p, v: p[S.period]?.avg ?? null, g: p[S.period]?.games || 0, w: p[S.period]?.won ?? 0 }));
+    rows.sort((a, b) => (b.v ?? -1) - (a.v ?? -1));
+    let rank = 0, prev = null;
+    const body = rows.map((r, i) => {
+      if (r.v != null && r.v !== prev) rank = i + 1; prev = r.v;
+      const me = r.p.userId === M.me;
+      return `<tr class="clickable${me ? ' me' : ''}" data-focus="${esc(r.p.userId)}" tabindex="0">
+        <td class="rank">${r.v == null ? '—' : rank}</td>
+        <td><div class="player-cell"><span class="swatch" style="background:${r.p.color}"></span>${esc(r.p.name)}${rank === 1 && r.v != null ? ' <span class="crown">LEADER</span>' : ''}${me ? ' <span class="dim">(you)</span>' : ''}</div></td>
+        <td class="num">${r.v == null ? '<span class="dim">Not played</span>' : fmt(r.v)}</td>
+        <td class="num">${fmt(r.g)}</td>
+        <td class="num">${r.w == null ? '—' : fmt(r.w)}</td>
+        <td class="num">${r.p.currentStreak ? fmt(r.p.currentStreak) + '<span class="dim"> d</span>' : '<span class="dim">0</span>'}</td>
+        <td>${spark(M, r.p.userId)}</td></tr>`;
+    }).join('');
+    return `<table><thead><tr><th>#</th><th>Player</th><th class="num">${S.period === 'today' ? 'Score' : 'Avg'}</th><th class="num">Rounds</th><th class="num">Days won</th><th class="num">Streak</th><th>Last 7 days</th></tr></thead><tbody>${body}</tbody></table>`;
+  }
+
+  function resultsTable(M) {
+    const cols = M.members;
+    const body = [...M.complete].reverse().map((d) => {
+      const live = d.date === M.asOf;
+      return `<tr><td>${fmtDate(d.date, { weekday: 'short', month: 'short', day: 'numeric' })}${live ? '<span class="tag-live">TODAY</span>' : ''}</td>
+        <td>${d.winners.length ? d.winners.map((id) => esc(M.byId[id].name)).join(' & ') : '—'}</td>
+        <td class="num">${fmt(d.top)}</td><td class="num">${d.margin == null ? '—' : '+' + fmt(d.margin)}</td><td class="num">${fmt(d.avg)}</td>
+        ${cols.map((p) => { const v = d.scores?.[p.userId]; return `<td class="num score-cell${v != null && v === d.top ? ' win' : ''}">${v == null ? '<span class="dim">·</span>' : fmt(v)}</td>`; }).join('')}</tr>`;
+    }).join('');
+    if (!body) return '<div class="empty-state">No full group days yet. The next sync adds the last 7 days.</div>';
+    return `<table><thead><tr><th>Date</th><th>Winner</th><th class="num">Top</th><th class="num">Margin</th><th class="num">Group avg</th>${cols.map((p) => `<th class="num">${esc(p.name)}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table>`;
+  }
+
+  // ---------- Charts ----------
+  function baseOpts(extra) {
+    const grid = { color: 'rgba(238,242,247,0.07)' }, ticks = { color: '#8d9bb4', font: { family: "'Barlow Condensed', sans-serif", size: 13, weight: 600 } };
+    return Object.assign({
+      responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: { legend: { labels: { color: '#eef2f7', boxWidth: 10, boxHeight: 10, font: { family: "'Barlow Condensed', sans-serif", size: 13, weight: 600 } } },
+        tooltip: { backgroundColor: 'rgba(13,22,40,0.97)', borderColor: '#ffb81c', borderWidth: 1, titleColor: '#ffb81c', bodyColor: '#eef2f7',
+          titleFont: { family: "'Barlow Condensed', sans-serif", weight: 700 }, bodyFont: { family: "'Barlow Condensed', sans-serif" } } },
+      scales: { x: { grid, ticks }, y: { grid, ticks } }
+    }, extra || {});
+  }
+
+  function overviewCharts(M) {
+    if (!window.Chart) return;
+    const shown = M.members.filter((p) => S.players.size === 0 || S.players.has(p.userId));
+    let dates = M.days.map((d) => d.date);
+    if (S.range !== 'all') { const cut = addDays(M.asOf, -Number(S.range)); dates = dates.filter((d) => d > cut); }
+    const lookup = Object.fromEntries(M.days.map((d) => [d.date, d.scores || {}]));
+    const ds = shown.map((p) => ({ label: p.name, data: dates.map((d) => lookup[d][p.userId] ?? null), borderColor: p.color, backgroundColor: p.color,
+      borderWidth: p.userId === M.me ? 2.6 : 1.8, pointRadius: dates.length > 40 ? 0 : 3, pointHoverRadius: 5, tension: 0.25, spanGaps: false }));
+    charts.daily = new Chart($('c-daily'), { type: 'line', data: { labels: dates.map((d) => fmtDate(d)), datasets: ds },
+      options: baseOpts({ interaction: { mode: 'index', intersect: false }, scales: { x: { grid: { color: 'rgba(238,242,247,0.05)' }, ticks: { color: '#8d9bb4', maxRotation: 0, autoSkip: true, maxTicksLimit: 10 } }, y: { grid: { color: 'rgba(238,242,247,0.07)' }, ticks: { color: '#8d9bb4' } } } }) });
+
+    const wins = [...shown].sort((a, b) => (b.alltime?.won || 0) - (a.alltime?.won || 0));
+    charts.wins = new Chart($('c-wins'), { type: 'bar', data: { labels: wins.map((p) => p.name), datasets: [{ data: wins.map((p) => p.alltime?.won || 0), backgroundColor: wins.map((p) => p.color + 'b3'), borderColor: wins.map((p) => p.color), borderWidth: 1 }] },
+      options: baseOpts({ indexAxis: 'y', plugins: { legend: { display: false }, tooltip: baseOpts().plugins.tooltip } }) });
+
+    const form = shown.map((p) => { const r = M.recent(p.userId, 7); return { p, n: r.length, d: r.length && p.alltime?.avg != null ? Math.round(mean(r) - p.alltime.avg) : null }; }).filter((x) => x.d != null).sort((a, b) => b.d - a.d);
+    charts.form = new Chart($('c-form'), { type: 'bar', data: { labels: form.map((x) => `${x.p.name} (${x.n})`), datasets: [{ data: form.map((x) => x.d), backgroundColor: form.map((x) => x.d >= 0 ? 'rgba(47,212,122,0.7)' : 'rgba(255,84,104,0.7)'), borderColor: form.map((x) => x.d >= 0 ? '#2fd47a' : '#ff5468'), borderWidth: 1 }] },
+      options: baseOpts({ indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { ...baseOpts().plugins.tooltip, callbacks: { label: (c) => sign(c.raw) + ' pts vs all-time' } } } }) });
+  }
+
+  // ---------- Player analysis ----------
+  function h2h(M, a, b) {
+    let w = 0, l = 0, t = 0; const ma = [], mb = [];
+    M.complete.forEach((d) => { const x = d.scores?.[a], y = d.scores?.[b]; if (x == null || y == null) return; ma.push(x); mb.push(y); if (x > y) w++; else if (x < y) l++; else t++; });
+    return { n: ma.length, w, l, t, a: mean(ma), b: mean(mb), margin: ma.length ? mean(ma.map((x, i) => x - mb[i])) : null };
+  }
+
+  function playerHTML(M) {
+    const p = M.byId[S.focus]; const s = M.series[p.userId].map((x) => x.score);
+    const at = p.alltime || {}, wk = p.week || {};
+    const ranked = [...M.members].filter((x) => x.alltime?.avg != null).sort((a, b) => b.alltime.avg - a.alltime.avg);
+    const pos = ranked.findIndex((x) => x.userId === p.userId);
+    const r7 = M.recent(p.userId, 7), r30 = M.recent(p.userId, 30);
+    const best = s.length ? Math.max(...s) : null, worst = s.length ? Math.min(...s) : null;
+    const winRate = at.games ? 100 * at.won / at.games : null;
+    const gGames = M.members.reduce((t, x) => t + (x.alltime?.games || 0), 0);
+    const groupWin = gGames ? 100 * M.members.reduce((t, x) => t + (x.alltime?.won || 0), 0) / gGames : null;
+
+    const isMe = p.userId === M.me, You = isMe ? 'You' : esc(p.name), you = isMe ? 'you' : esc(p.name);
+    const notes = [];
+    if (pos >= 0) {
+      if (pos === 0 && ranked[1]) notes.push(['good', `#1 all-time`, `Leads ${esc(ranked[1].name)} by ${fmt(at.avg - ranked[1].alltime.avg)} pts on average.`]);
+      else if (pos > 0) notes.push(['info', `#${pos + 1} of ${ranked.length} all-time`, `${fmt(ranked[pos - 1].alltime.avg - at.avg)} pts behind ${esc(ranked[pos - 1].name)} for #${pos}.${ranked[pos + 1] ? ` ${fmt(at.avg - ranked[pos + 1].alltime.avg)} pts clear of ${esc(ranked[pos + 1].name)}.` : ''}`]);
+    }
+    if (r7.length >= 2) { const d = mean(r7) - at.avg; notes.push([d >= 15 ? 'good' : d <= -15 ? 'bad' : 'info', d >= 15 ? 'Running hot' : d <= -15 ? 'In a slump' : 'Playing to form', `${fmt(mean(r7))} avg over the last 7 days (${r7.length} rounds), ${sign(d)} vs all-time.${r7.length < 3 ? ' Small sample.' : ''}`]); }
+    else notes.push(['bad', 'Barely played lately', `${r7.length} round${r7.length === 1 ? '' : 's'} in the last 7 days.`]);
+    if (winRate != null && groupWin != null) notes.push([winRate >= groupWin ? 'good' : 'neutral', 'Closer rate', `Wins ${fmt(winRate, 1)}% of rounds played. Across the group, ${fmt(groupWin, 1)}% of rounds are wins.`]);
+    if (s.length >= 5) notes.push(['info', 'Consistency', `Tracked rounds swing about ±${fmt(sd(s))} pts. Range ${fmt(worst)} to ${fmt(best)}.`]);
+    if (M.series[p.userId].length >= 14) {
+      const wd = {}; M.series[p.userId].forEach((x) => { const k = toDate(x.date).getDay(); (wd[k] = wd[k] || []).push(x.score); });
+      const avgs = Object.entries(wd).filter(([, v]) => v.length >= 2).map(([k, v]) => [k, mean(v)]).sort((a, b) => b[1] - a[1]);
+      const nm = (k) => new Date(2026, 8, 27 + Number(k), 12).toLocaleDateString(undefined, { weekday: 'long' }); // Sep 27 2026 is a Sunday
+      if (avgs.length >= 3) notes.push(['info', 'Best day of the week', `${nm(avgs[0][0])}s (${fmt(avgs[0][1])} avg). Weakest on ${nm(avgs[avgs.length - 1][0])}s (${fmt(avgs[avgs.length - 1][1])}).`]);
+    }
+    if (p.currentStreak >= 7) notes.push(['good', `${p.currentStreak}-day streak`, 'Has played every day for over a week.']);
+    else if (!p.currentStreak) { const last = M.series[p.userId].slice(-1)[0]; notes.push(['bad', 'Streak broken', last ? `Last tracked round was ${fmtDate(last.date)}.` : 'No tracked rounds yet.']); }
+    const rivals = M.members.filter((o) => o.userId !== p.userId).map((o) => ({ o, h: h2h(M, p.userId, o.userId) })).filter((x) => x.h.n >= 2);
+    if (rivals.length) {
+      const nem = [...rivals].sort((a, b) => a.h.margin - b.h.margin)[0], prey = [...rivals].sort((a, b) => b.h.margin - a.h.margin)[0];
+      if (nem.h.margin < 0) notes.push(['bad', 'Nemesis', `${esc(nem.o.name)} beats ${you} by ${fmt(-nem.h.margin, 1)} pts on average on shared days (${nem.h.w}-${nem.h.l}${nem.h.t ? '-' + nem.h.t : ''}).`]);
+      if (prey.h.margin > 0) notes.push(['good', 'Favorite matchup', `${You} top${isMe ? '' : 's'} ${esc(prey.o.name)} by ${fmt(prey.h.margin, 1)} pts on average on shared days (${prey.h.w}-${prey.h.l}${prey.h.t ? '-' + prey.h.t : ''}).`]);
+    }
+
+    const chips = M.members.map((x) => `<button type="button" class="chip${x.userId === p.userId ? ' active' : ''}" data-focus="${esc(x.userId)}"><span class="dot" style="background:${x.color}"></span>${esc(x.name)}${x.userId === M.me ? ' (you)' : ''}</button>`).join('');
+    const h2hRows = M.members.filter((o) => o.userId !== p.userId).map((o) => {
+      const h = h2h(M, p.userId, o.userId);
+      const pill = !h.n ? '<span class="dim">no shared days</span>' : h.w > h.l ? `<span class="pill pill-w">${h.w}-${h.l}${h.t ? '-' + h.t : ''}</span>` : h.w < h.l ? `<span class="pill pill-l">${h.w}-${h.l}${h.t ? '-' + h.t : ''}</span>` : `<span class="pill pill-t">${h.w}-${h.l}${h.t ? '-' + h.t : ''}</span>`;
+      const atd = (at.avg ?? 0) - (o.alltime?.avg ?? 0);
+      return `<tr class="clickable" data-focus="${esc(o.userId)}" tabindex="0"><td><div class="player-cell"><span class="swatch" style="background:${o.color}"></span>${esc(o.name)}</div></td><td>${pill}</td><td class="num">${fmt(h.n)}</td>
+        <td class="num ${h.margin > 0 ? 'up' : h.margin < 0 ? 'down' : ''}">${h.n ? sign(h.margin, 1) : '—'}</td><td class="num">${fmt(h.a)}</td><td class="num">${fmt(h.b)}</td>
+        <td class="num ${atd > 0 ? 'up' : atd < 0 ? 'down' : ''}">${o.alltime?.avg != null ? sign(atd) : '—'}</td></tr>`;
+    }).join('');
+
+    const dWeek = wk.avg != null && at.avg != null ? wk.avg - at.avg : null;
+    return `
+      <section class="card">
+        <div class="filter-label">Player</div>
+        <p class="sub">Pick a player to scout. You can also click any row in the leaderboard or head-to-head table.</p>
+        <div class="chips">${chips}</div>
+      </section>
+
+      <h2 class="section-title">${esc(p.name)} · ${p.role === 'owner' ? 'Group owner' : 'Member'}</h2>
+      <p class="section-sub">Joined ${p.memberSince ? fmtDate(p.memberSince, { month: 'long', day: 'numeric', year: 'numeric' }) : '—'}. All-time stats come from GeoSports; trends use ${fmt(s.length)} tracked rounds.</p>
+      <div class="metric-grid four">
+        ${metric('All-time avg', fmt(at.avg), pos >= 0 ? `#${pos + 1} in the group` : 'not ranked')}
+        ${metric('Rounds played', fmt(at.games), `${fmt(p.perfectGames || 0)} perfect`)}
+        ${metric('Days won', fmt(at.won), winRate != null ? `${fmt(winRate, 1)}% win rate` : '—')}
+        ${metric('Current streak', fmt(p.currentStreak || 0) + ' d', p.currentStreak ? 'consecutive days' : 'no active streak')}
+        ${metric('This week', fmt(wk.avg), wk.games ? `<span class="${dWeek >= 0 ? 'up' : 'down'}">${sign(dWeek)}</span> vs all-time · ${wk.games} rounds` : 'no rounds yet')}
+        ${metric('Last 30 days', fmt(mean(r30)), `${r30.length} tracked rounds`)}
+        ${metric('Best tracked', fmt(best), best != null ? fmtDate(M.series[p.userId].find((x) => x.score === best).date) : '—', true)}
+        ${metric('Worst tracked', fmt(worst), worst != null ? fmtDate(M.series[p.userId].find((x) => x.score === worst).date) : '—')}
+      </div>
+
+      <section class="card">
+        <h3>Scouting report</h3>
+        <p class="sub">Generated from standings, recent form and shared days.</p>
+        <div class="notes">${notes.map(([k, b, t]) => `<div class="note ${k}"><b>${b}</b><span>${t}</span></div>`).join('')}</div>
+      </section>
+
+      <section class="card">
+        <h3>Score trend</h3>
+        <p class="sub">Each tracked round, a 5-round rolling average, and the group’s daily average on full-group days.</p>
+        <div class="chart-wrap" style="height:340px"><canvas id="c-trend" role="img" aria-label="Score trend for ${esc(p.name)}"></canvas></div>
+      </section>
+
+      <div class="row2">
+        <section class="card">
+          <h3>Head-to-head</h3>
+          <p class="sub">Record on days both played (W-L-T), average margin, and all-time avg gap.</p>
+          <div class="scroll-table flat"><table><thead><tr><th>Opponent</th><th>Record</th><th class="num">Days</th><th class="num">Margin</th><th class="num">${isMe ? 'You' : esc(p.name)}</th><th class="num">Opp</th><th class="num">All-time</th></tr></thead><tbody>${h2hRows}</tbody></table></div>
+        </section>
+        <section class="card">
+          <h3>Score distribution</h3>
+          <p class="sub">How tracked rounds spread across score bands.</p>
+          <div class="chart-wrap" style="height:260px"><canvas id="c-dist" role="img" aria-label="Score distribution"></canvas></div>
+        </section>
+      </div>`;
+  }
+
+  function playerCharts(M) {
+    if (!window.Chart) return;
+    const p = M.byId[S.focus]; const ser = M.series[p.userId];
+    const roll = ser.map((x, i) => i < 4 ? null : Math.round(mean(ser.slice(i - 4, i + 1).map((y) => y.score))));
+    const gAvg = Object.fromEntries(M.complete.map((d) => [d.date, d.avg != null ? Math.round(d.avg) : null]));
+    const ds = [
+      { label: p.name, data: ser.map((x) => x.score), borderColor: p.color, backgroundColor: p.color + '33', fill: true, borderWidth: 1.6, pointRadius: ser.length > 60 ? 1.5 : 3, tension: 0.2 },
+      { label: '5-round avg', data: roll, borderColor: '#eef2f7', borderWidth: 2.4, pointRadius: 0, tension: 0.3, spanGaps: true },
+      { label: 'Group avg', data: ser.map((x) => gAvg[x.date] ?? null), borderColor: '#ff5468', borderDash: [5, 4], borderWidth: 1.6, pointRadius: 0, spanGaps: true }
+    ];
+    charts.trend = new Chart($('c-trend'), { type: 'line', data: { labels: ser.map((x) => fmtDate(x.date)), datasets: ds },
+      options: baseOpts({ interaction: { mode: 'index', intersect: false }, scales: { x: { grid: { color: 'rgba(238,242,247,0.05)' }, ticks: { color: '#8d9bb4', maxRotation: 0, autoSkip: true, maxTicksLimit: 10 } }, y: { grid: { color: 'rgba(238,242,247,0.07)' }, ticks: { color: '#8d9bb4' } } } }) });
+
+    const bands = [['Under 600', 0, 600], ['600s', 600, 700], ['700s', 700, 800], ['800s', 800, 900], ['900+', 900, 99999]];
+    const counts = bands.map(([, a, b]) => ser.filter((x) => x.score >= a && x.score < b).length);
+    charts.dist = new Chart($('c-dist'), { type: 'bar', data: { labels: bands.map((b) => b[0]), datasets: [{ data: counts, backgroundColor: p.color + 'a6', borderColor: p.color, borderWidth: 1 }] },
+      options: baseOpts({ plugins: { legend: { display: false }, tooltip: { ...baseOpts().plugins.tooltip, callbacks: { label: (c) => c.raw + ' rounds' } } } }) });
+  }
+
+  // ---------- Events ----------
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-tab],[data-period],[data-range],[data-player],[data-focus],[data-col] > .card-toggle');
+    if (!t) return;
+    if (t.dataset.tab) { S.tab = t.dataset.tab; try { localStorage.setItem('gs-tab', S.tab); } catch (x) {} }
+    else if (t.dataset.period) S.period = t.dataset.period;
+    else if (t.dataset.range) S.range = t.dataset.range;
+    else if (t.dataset.player) { const id = t.dataset.player; if (id === 'all') S.players.clear(); else if (S.players.has(id)) S.players.delete(id); else S.players.add(id); }
+    else if (t.dataset.focus) { S.focus = t.dataset.focus; if (S.tab !== 'player') { S.tab = 'player'; window.scrollTo({ top: 0 }); } }
+    else { const k = t.parentElement.dataset.col; S.open[k] = !S.open[k]; }
+    render();
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.matches('tr[data-focus]')) e.target.click(); });
+
+  // ---------- Data: read the Google Sheet on every load ----------
+  const SHEET_ID = '14_UcW_n_3UEfPEcJvCrGHoerbHL54HZuETPOhZUvBZ4';
+  const SHEET_URL = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/edit';
+  const csvUrl = (tab) => `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&headers=1&sheet=${encodeURIComponent(tab)}`;
+
+  function parseCSV(text) {
+    const rows = []; let row = [], field = '', q = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (q) {
+        if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else q = false; }
+        else field += c;
+      } else if (c === '"') q = true;
+      else if (c === ',') { row.push(field); field = ''; }
+      else if (c === '\n' || c === '\r') {
+        if (c === '\r' && text[i + 1] === '\n') i++;
+        row.push(field); rows.push(row); row = []; field = '';
+      } else field += c;
+    }
+    if (field !== '' || row.length) { row.push(field); rows.push(row); }
+    return rows.filter((r) => r.some((v) => v.trim() !== ''));
+  }
+  async function fetchTab(tab) {
+    const resp = await fetch(csvUrl(tab), { cache: 'no-store' });
+    if (!resp.ok) throw new Error(`Google Sheets returned ${resp.status} for the ${tab} tab.`);
+    const text = await resp.text();
+    if (/^\s*</.test(text)) throw new Error('The Google Sheet isn’t shared publicly yet. Set it to “Anyone with the link can view”.');
+    const rows = parseCSV(text);
+    const head = rows.shift().map((h) => h.trim());
+    return rows.map((r) => Object.fromEntries(head.map((h, i) => [h, (r[i] ?? '').trim()])));
+  }
+  const num = (v) => { if (v === '' || v == null) return null; const n = Number(String(v).replace(/,/g, '')); return Number.isFinite(n) ? n : null; };
+
+  async function loadSheet() {
+    const [players, info, daily] = await Promise.all([fetchTab('Players'), fetchTab('Info'), fetchTab('Daily Scores')]);
+    const I = Object.fromEntries(info.map((r) => [r.Field, r.Value]));
+    const members = players.filter((p) => p['User ID']).map((p) => ({
+      userId: p['User ID'], name: p.Player, role: p.Role, memberSince: p['Member since'],
+      currentStreak: num(p['Current streak']) ?? 0, perfectGames: num(p['Perfect games']) ?? 0,
+      week: { avg: num(p['Week avg']), games: num(p['Week rounds']) ?? 0, won: num(p['Week wins']) ?? 0 },
+      month: { avg: num(p['Month avg']), games: num(p['Month rounds']) ?? 0, won: num(p['Month wins']) ?? 0 },
+      alltime: { avg: num(p['All-time avg']), games: num(p['All-time rounds']) ?? 0, won: num(p['All-time wins']) ?? 0 },
+      todayScore: num(p['Today score'])
+    }));
+    const idByName = Object.fromEntries(members.map((m) => [m.name, m.userId]));
+    const days = daily.filter((r) => /^\d{4}-\d{2}-\d{2}$/.test(r.Date)).map((r) => {
+      const scores = {};
+      Object.entries(r).forEach(([k, v]) => { const id = idByName[k]; const n = num(v); if (id && n != null) scores[id] = n; });
+      return { date: r.Date, complete: String(r['Full group day']).toLowerCase() === 'yes', scores };
+    });
+    S.meta = {
+      group: { name: I['Group'] || 'GeoSports', code: I['Group code'] || '' },
+      date: I['GeoSports day'], fetchedAt: I['Last refreshed (UTC)'], currentUserId: I['Dashboard owner user ID'],
+      members, today: members.filter((m) => m.todayScore != null).map((m) => ({ userId: m.userId, score: m.todayScore }))
+    };
+    S.days = days;
+  }
+
+  function showError(msg) {
+    $('app').innerHTML = `<div class="card empty-state"><h2>Can’t load the scores</h2><p>${esc(msg)}</p><p style="margin-top:12px"><a href="${SHEET_URL}" target="_blank" rel="noopener" style="color:var(--amber)">Open the Google Sheet</a></p></div>`;
+  }
+  async function syncNow() {
+    const btn = $('sync-btn'); btn.disabled = true; btn.textContent = '↻ Syncing…';
+    try { await loadSheet(); render(); }
+    catch (err) { if (!S.meta) showError(err.message || 'The sheet could not be reached. Check your connection and try again.'); }
+    btn.disabled = false; btn.textContent = '↻ Sync';
+  }
+  $('sync-btn').addEventListener('click', syncNow);
+  syncNow();
+})();
+</script>
+</body>
+</html>
