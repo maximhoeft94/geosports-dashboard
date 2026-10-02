@@ -102,8 +102,9 @@
   .collapsible.collapsed .card-body { display: none; }
   .collapsible .card-body { margin-top: 14px; }
   .collapsible.collapsed { padding-block: 14px; }
-  .bests { border-top: 5px solid var(--navy); }
-  .bests .item { border-left: 4px solid var(--navy); }
+  .bests { border-top: 5px solid var(--gold); }
+  .bests .item { border-left: 4px solid var(--gold); }
+  .exec-rule { border: 0; border-top: 1px solid var(--line-strong); margin: 24px 0 20px; }
   .hof { border-top: 5px solid var(--gold); background: linear-gradient(180deg, var(--gold-soft), var(--panel) 120px); }
   .hof .item { border-left: 4px solid var(--gold); background: var(--panel); }
   .hof .item .val { color: var(--navy); }
@@ -114,8 +115,6 @@
   .hof .item:first-child .place { background: var(--gold); color: var(--ink); }
   .bench .item:first-child .place { background: var(--red); }
   .bests > .card-toggle { color: var(--navy); }
-  .oddities { border-top: 5px solid var(--red); }
-  .oddities > .card-toggle { color: var(--navy); }
 
   .section-title { font-family: var(--font-display); font-size: 24px; font-weight: 400; letter-spacing: 0.5px; color: var(--navy); text-transform: uppercase; margin: 30px 0 6px; text-wrap: balance; }
   .section-title::after { content: ''; display: block; width: 64px; height: 5px; margin-top: 8px; background: linear-gradient(180deg, var(--red) 0 2px, transparent 2px 3px, var(--navy) 3px 5px); }
@@ -144,8 +143,6 @@
 
   .item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
   .item { padding: 12px 14px; background: var(--panel-alt); border-color: var(--line); }
-  .oddities .item.trophy { border-left: 4px solid var(--win); }
-  .oddities .item.shame { border-left: 4px solid var(--red); }
   .item .lbl { font-family: var(--font-cond); font-size: 13px; font-weight: 700; letter-spacing: 1.5px; color: var(--muted); text-transform: uppercase; }
   .item .val { font-family: var(--font-num); font-size: 38px; font-weight: 600; color: var(--navy); font-variant-numeric: tabular-nums; line-height: 0.95; margin: 4px 0 2px; overflow-wrap: anywhere; }
   .item .who { color: var(--ink); font-weight: 700; }
@@ -251,7 +248,7 @@
 (function () {
   'use strict';
   const PALETTE = ['#c98a00', '#1f4fd1', '#d42a3c', '#138a4b', '#7c3aed', '#ea580c', '#db2777', '#0e9488'];
-  const S = { meta: null, days: [], tab: 'overview', period: 'week', players: new Set(), range: '30', focus: null, open: { bests: true, hof: true, bench: true, odd: true } };
+  const S = { meta: null, days: [], tab: 'overview', period: 'week', players: new Set(), range: '30', focus: null, open: { bests: true, hof: true, bench: true } };
   const charts = {};
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -381,13 +378,9 @@
         <button type="button" class="card-toggle" aria-expanded="${S.open.bests}">Record Book</button>
         <div class="card-body"><div class="item-grid">${bests.map(([l, v, w, s]) => `<div class="item"><div class="lbl">${l}</div><div class="val">${v}</div><div class="who">${esc(w)}</div><div class="s">${esc(s)}</div></div>`).join('')}</div></div>
       </section>
+      <hr class="exec-rule">
       ${listSection('hof', 'hof', 'Hall of Famers', top, `The season’s ${nList === 1 ? 'best single round' : nList + ' best single rounds'}.`)}
       ${listSection('bench', 'bench', 'You’re Benched!', bottom, `The season’s ${nList === 1 ? 'worst single round' : nList + ' worst single rounds'}. Tied scores are listed by date, earliest first.`)}
-      <section class="card collapsible oddities${S.open.odd ? '' : ' collapsed'}" data-col="odd">
-        <button type="button" class="card-toggle" aria-expanded="${S.open.odd}">Highlight Reel &amp; Bloopers</button>
-        <div class="card-body"><div class="item-grid">${odd.map(([k, l, v, w, s]) => `<div class="item ${k}"><div class="lbl">${l}</div><div class="val">${v}</div><div class="who">${w}</div><div class="s">${esc(s)}</div></div>`).join('')}</div>
-        <p class="sub" style="margin:12px 0 0">Blowouts and photo finishes wait until a day is over. Hot hand and ice cold need 3+ rounds in the last 7 days.</p></div>
-      </section>
 
       <h2 class="section-title">Season Totals</h2>
       <p class="section-sub">Totals since the season started on ${esc(fmtDate(M.m.start, { month: 'long', day: 'numeric' }))}. Not affected by filters.</p>

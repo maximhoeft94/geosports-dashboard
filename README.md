@@ -9,9 +9,8 @@ A live scoreboard for my friends' daily [GeoSports](https://geosports.app) games
 ## What it does
 
 **Overview tab**
-- Record Book: best season average, highest round, most days won, longest streak, most rounds played
+- Record Book (the executive summary): best season average, highest round, most days won, longest streak, most rounds played
 - Hall of Famers and You're Benched!: the season's best and worst single rounds
-- Highlight Reel & Bloopers: biggest blowout, photo finish, hot hand, ice cold, wildest swing, players who skipped the week
 - Season totals for the whole group
 - Leaderboard for today, this week, this month and the season, ranked by average like GeoSports does, with a 7-day trend line per player
 - Daily scores chart with player and date-range filters, days-won and current-form charts, and a full daily results table
@@ -35,7 +34,6 @@ GeoSports group ──(refresh)──▶ Google Sheet ──(CSV)──▶ index
 - **Stats:** every average, win, streak and record is calculated in the browser from `Daily Scores`, counting only days from the season start on. Weeks run Monday to Sunday, and a tie for the day's top score counts as a win for each tied player.
 - **Refreshing:** GeoSports shows every member's daily scores for the last 7 days. Each refresh adds new days to the sheet and updates the last 7, so late plays get picked up and older days are never overwritten. As long as a refresh happens at least once a week, no day is lost.
 - **Page:** a single static `index.html` on GitHub Pages. It fetches each tab's CSV export straight from the browser and computes everything client-side, so there's no backend.
-- **Accuracy rules:** blowouts and photo finishes wait until a day is over. Hot hand and ice cold need at least 3 rounds in the last week.
 
 **Stack:** JavaScript · Chart.js · HTML/CSS · Google Sheets · GitHub Pages
 
