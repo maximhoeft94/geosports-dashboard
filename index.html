@@ -460,7 +460,7 @@
       tile('Needs to step it up', fmt(lo), played.length > 1 ? names(trailers) : '—', played.length > 1 ? `lowest season avg · ${trailers.length === 1 ? pl(trailers[0].alltime.games, 'round') : 'tied'}` : 'needs 2+ players with rounds', 'tile-low'),
       tile('Group average', fmt(mean(all)), '', `per round, all ${pl(all.length, 'round')}`),
       tile('7-day leader', fmt(hi7), lead7.length ? lead7.map((x) => esc(x.p.name)).join(' & ') : '—', lead7.length ? `avg over the last 7 days · ${lead7.length === 1 ? pl(lead7[0].n, 'round') : 'tied'}` : 'no rounds in the last 7 days'),
-      tile('Rounds tracked', fmt(all.length), '', `over ${pl(days.length, 'day')}`),
+      tile('Rounds tracked', pl(days.length, 'day'), pl(all.length, 'game') + ' played', `days recorded since ${esc(fmtDate(M.m.start))}`),
       tile('Performance rate', possible ? fmt(100 * all.length / possible, 0) + '%' : '—', '', possible ? `${fmt(all.length)} of ${fmt(possible)} possible rounds (${members.length} players × ${pl(days.length, 'day')})` : 'no days yet')
     ].join('');
   }
