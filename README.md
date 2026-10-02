@@ -10,6 +10,7 @@ A live scoreboard for my friends' daily [GeoSports](https://geosports.app) games
 
 **Overview tab**
 - Record Book: best season average, highest round, most days won, longest streak, most rounds played
+- Hall of Famers and You're Benched!: the season's best and worst single rounds
 - Highlight Reel & Bloopers: biggest blowout, photo finish, hot hand, ice cold, wildest swing, players who skipped the week
 - Season totals for the whole group
 - Leaderboard for today, this week, this month and the season, ranked by average like GeoSports does, with a 7-day trend line per player

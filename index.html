@@ -102,7 +102,17 @@
   .collapsible.collapsed .card-body { display: none; }
   .collapsible .card-body { margin-top: 14px; }
   .collapsible.collapsed { padding-block: 14px; }
-  .bests { border-top: 5px solid var(--gold); }
+  .bests { border-top: 5px solid var(--navy); }
+  .bests .item { border-left: 4px solid var(--navy); }
+  .hof { border-top: 5px solid var(--gold); background: linear-gradient(180deg, var(--gold-soft), var(--panel) 120px); }
+  .hof .item { border-left: 4px solid var(--gold); background: var(--panel); }
+  .hof .item .val { color: var(--navy); }
+  .bench { border-top: 5px solid var(--faint); background: linear-gradient(180deg, #eceff4, var(--panel) 120px); }
+  .bench .item { border-left: 4px solid var(--faint); background: var(--panel); }
+  .bench .item .val { color: var(--ink-2); }
+  .place { display: inline-grid; place-items: center; width: 20px; height: 20px; margin-right: 7px; border-radius: 50%; font-size: 12px; letter-spacing: 0; color: #fff; background: var(--faint); vertical-align: 1px; }
+  .hof .item:first-child .place { background: var(--gold); color: var(--ink); }
+  .bench .item:first-child .place { background: var(--red); }
   .bests > .card-toggle { color: var(--navy); }
   .oddities { border-top: 5px solid var(--red); }
   .oddities > .card-toggle { color: var(--navy); }
@@ -134,7 +144,6 @@
 
   .item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
   .item { padding: 12px 14px; background: var(--panel-alt); border-color: var(--line); }
-  .bests .item { border-left: 4px solid var(--gold); }
   .oddities .item.trophy { border-left: 4px solid var(--win); }
   .oddities .item.shame { border-left: 4px solid var(--red); }
   .item .lbl { font-family: var(--font-cond); font-size: 13px; font-weight: 700; letter-spacing: 1.5px; color: var(--muted); text-transform: uppercase; }
@@ -242,10 +251,11 @@
 (function () {
   'use strict';
   const PALETTE = ['#c98a00', '#1f4fd1', '#d42a3c', '#138a4b', '#7c3aed', '#ea580c', '#db2777', '#0e9488'];
-  const S = { meta: null, days: [], tab: 'overview', period: 'week', players: new Set(), range: '30', focus: null, open: { bests: true, odd: true } };
+  const S = { meta: null, days: [], tab: 'overview', period: 'week', players: new Set(), range: '30', focus: null, open: { bests: true, hof: true, bench: true, odd: true } };
   const charts = {};
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const ordinal = (n) => n + (['th', 'st', 'nd', 'rd'][(n % 100 - 20) % 10] || ['th', 'st', 'nd', 'rd'][n % 100] || 'th');
   const pl = (n, w) => fmt(n) + ' ' + w + (n === 1 ? '' : 's');
   const fmt = (n, d = 0) => (n == null || isNaN(n)) ? '—' : Number(n).toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
   const sign = (n, d = 0) => (n == null || isNaN(n)) ? '—' : (n > 0 ? '+' : n < 0 ? '−' : '±') + fmt(Math.abs(n), d);
@@ -341,7 +351,6 @@
       close && ['trophy', 'Photo finish', close.margin === 0 ? 'Tie' : '+' + fmt(close.margin), close.winners.map(name).join(' & '), close.margin === 0 ? `tied for the win ${fmtDate(close.date)}` : `edged it ${fmtDate(close.date)}`],
       hot && hot.delta > 0 && ['trophy', 'Hot hand', sign(hot.delta), esc(hot.p.name), `last 7 days (${pl(hot.n, 'round')}) vs season avg`],
       wr && ['trophy', 'The closer', fmt(100 * wr.alltime.won / wr.alltime.games, 1) + '%', esc(wr.name), `${pl(wr.alltime.won, 'win')} in ${pl(wr.alltime.games, 'round')}`],
-      low && ['shame', 'Rough round', fmt(low.score), name(low.id), `lowest group score, ${fmtDate(low.date)}`],
       swing && ['shame', 'Wildest swing', sign(swing.d), name(swing.id), `day-over-day, ${fmtDate(swing.date)}`],
       cold && cold.delta < 0 && ['shame', 'Ice cold', sign(cold.delta), esc(cold.p.name), `last 7 days (${pl(cold.n, 'round')}) vs season avg`],
       mia.length && ['shame', 'Scratched', mia.length + (mia.length === 1 ? ' player' : ' players'), mia.map((p) => esc(p.name)).join(', '), 'no rounds this week'],
@@ -354,11 +363,26 @@
       members.map((p) => `<button type="button" class="chip${S.players.has(p.userId) ? ' active' : ''}" data-player="${esc(p.userId)}"><span class="dot" style="background:${p.color}"></span>${esc(p.name)}<span class="n">×${fmt(p.alltime?.games)}</span></button>`).join('');
 
     const firstFull = complete[0]?.date;
+    // Hall of Famers / You're Benched!: best and worst single rounds. Each list takes at most half
+    // the season's rounds (max 5), so the same round never shows up on both lists.
+    const rounds = [];
+    M.days.forEach((d) => Object.entries(d.scores).forEach(([id, sc]) => { if (byId[id]) rounds.push({ id, score: sc, date: d.date }); }));
+    const nList = Math.min(5, Math.floor(rounds.length / 2));
+    const top = [...rounds].sort((a, b) => b.score - a.score || (a.date < b.date ? -1 : 1)).slice(0, nList);
+    const bottom = [...rounds].sort((a, b) => a.score - b.score || (a.date < b.date ? -1 : 1)).slice(0, nList);
+    const roundCards = (list) => list.map((r, i) => `<div class="item"><div class="lbl"><span class="place">${i + 1}</span>${i === 0 ? (list === top ? 'Best round' : 'Worst round') : ordinal(i + 1) + ' place'}</div><div class="val">${fmt(r.score)}</div><div class="who">${name(r.id)}</div><div class="s">${esc(fmtDate(r.date, { weekday: 'short', month: 'short', day: 'numeric' }))}</div></div>`).join('');
+    const listSection = (key, cls, title, list, blurb) => `
+      <section class="card collapsible ${cls}${S.open[key] ? '' : ' collapsed'}" data-col="${key}">
+        <button type="button" class="card-toggle" aria-expanded="${S.open[key]}">${title}</button>
+        <div class="card-body">${list.length ? `<div class="item-grid">${roundCards(list)}</div><p class="sub" style="margin:12px 0 0">${blurb}</p>` : '<p class="sub" style="margin:0">Fills in once the season has a few rounds.</p>'}</div>
+      </section>`;
     return `
       <section class="card collapsible bests${S.open.bests ? '' : ' collapsed'}" data-col="bests">
         <button type="button" class="card-toggle" aria-expanded="${S.open.bests}">Record Book</button>
         <div class="card-body"><div class="item-grid">${bests.map(([l, v, w, s]) => `<div class="item"><div class="lbl">${l}</div><div class="val">${v}</div><div class="who">${esc(w)}</div><div class="s">${esc(s)}</div></div>`).join('')}</div></div>
       </section>
+      ${listSection('hof', 'hof', 'Hall of Famers', top, `The season’s ${nList === 1 ? 'best single round' : nList + ' best single rounds'}.`)}
+      ${listSection('bench', 'bench', 'You’re Benched!', bottom, `The season’s ${nList === 1 ? 'worst single round' : nList + ' worst single rounds'}. Tied scores are listed by date, earliest first.`)}
       <section class="card collapsible oddities${S.open.odd ? '' : ' collapsed'}" data-col="odd">
         <button type="button" class="card-toggle" aria-expanded="${S.open.odd}">Highlight Reel &amp; Bloopers</button>
         <div class="card-body"><div class="item-grid">${odd.map(([k, l, v, w, s]) => `<div class="item ${k}"><div class="lbl">${l}</div><div class="val">${v}</div><div class="who">${w}</div><div class="s">${esc(s)}</div></div>`).join('')}</div>
