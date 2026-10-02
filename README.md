@@ -22,6 +22,8 @@ A live scoreboard for my friends' daily [GeoSports](https://geosports.app) games
 - Head-to-head record against every other player on days both played
 - Score distribution
 
+![Player analysis](screenshots/player.png)
+
 ## How it works
 
 ```
@@ -46,6 +48,8 @@ python3 -m http.server 8000
 ```
 
 To point it at a different sheet, change `SHEET_ID` in `index.html`. The sheet needs the `Daily Scores`, `Players` and `Info` tabs described above (`Info` needs a `Tracking starts` row) and must be shared as "Anyone with the link can view".
+
+![Mobile](screenshots/mobile.png)
 
 ---
 Built by Maxim Hoeft.

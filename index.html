@@ -13,203 +13,201 @@
 <title>FV Ball Knowers Scoreboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Graduate&family=Teko:wght@500;600&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  /* Layout: night-game broadcast. Scoreboard header bar, segmented tabs, panels with a slanted score-bug label, LED-amber numbers over turf-striped navy. Deliberately dark-only. */
+  /* Layout: home-jersey game program. White header with a navy/red sleeve stripe, varsity lettering for headings, scoreboard-style numerals, white panels on a light field-grey ground. Light mode only, by design. */
   :root {
-    color-scheme: dark;
-    --night: #0a1120;          /* stadium night sky */
-    --panel: #111a2c;          /* broadcast panel */
-    --panel-hi: #17233a;
-    --inset: #0c1424;
-    --chalk: #eef2f7;          /* chalk line white */
-    --muted: #8d9bb4;
-    --faint: #5d6b85;
-    --amber: #ffb81c;          /* scoreboard LED */
-    --turf: #2fd47a;           /* turf green, wins / up */
-    --red: #ff5468;            /* losses / down */
-    --line: rgba(238, 242, 247, 0.08);
-    --line-strong: rgba(238, 242, 247, 0.18);
-    --font-display: 'Big Shoulders Display', 'Barlow Condensed', 'Arial Narrow', sans-serif;
+    color-scheme: light;
+    --field: #eef1f6;          /* light field grey ground */
+    --panel: #ffffff;          /* home-jersey white */
+    --panel-alt: #f6f8fb;
+    --ink: #0e1f3f;            /* team navy */
+    --ink-2: #33415c;
+    --muted: #5d6a82;
+    --faint: #8792a7;
+    --navy: #13306b;
+    --royal: #1f4fd1;
+    --red: #d42a3c;            /* varsity red */
+    --gold: #e2a00a;           /* leader gold */
+    --gold-soft: #fff4d6;
+    --win: #138a4b;            /* win green */
+    --loss: #c8283a;
+    --line: #dde3ee;
+    --line-strong: #c4cddd;
+    --shadow: 0 1px 2px rgba(14,31,63,0.06), 0 6px 18px rgba(14,31,63,0.06);
+    --font-display: 'Graduate', 'Georgia', serif;
+    --font-num: 'Teko', 'Barlow Condensed', 'Arial Narrow', sans-serif;
     --font-cond: 'Barlow Condensed', 'Arial Narrow', sans-serif;
     --font-body: 'Barlow', 'Segoe UI', system-ui, sans-serif;
   }
   * { box-sizing: border-box; }
-  html, body { background: var(--night); overflow-x: hidden; }
+  html, body { background: var(--field); overflow-x: hidden; }
   body {
-    margin: 0; color: var(--chalk);
-    font-family: var(--font-body); font-size: 16px; font-weight: 500; line-height: 1.45; -webkit-font-smoothing: antialiased;
+    margin: 0; color: var(--ink); font-family: var(--font-body); font-size: 16px; font-weight: 500; line-height: 1.45;
+    -webkit-font-smoothing: antialiased; min-height: 100vh;
     background:
-      radial-gradient(ellipse 70% 40% at 15% -5%, rgba(255,255,255,0.07), transparent 70%),
-      radial-gradient(ellipse 70% 40% at 85% -5%, rgba(255,255,255,0.06), transparent 70%),
-      repeating-linear-gradient(90deg, rgba(47,212,122,0.025) 0 90px, transparent 90px 180px),
-      var(--night);
-    background-attachment: fixed;
-    min-height: 100vh;
+      linear-gradient(180deg, rgba(31,79,209,0.05), transparent 260px),
+      var(--field);
   }
   button { font: inherit; }
-  :focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+  :focus-visible { outline: 3px solid var(--royal); outline-offset: 2px; }
+  a { color: var(--royal); }
 
-  /* Header: scoreboard bar */
+  /* Header: white jersey with sleeve stripes */
   header {
-    position: relative; z-index: 2;
-    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;
-    padding: 14px 28px;
-    background: linear-gradient(180deg, #131e33, #0d1628);
-    border-bottom: 3px solid var(--amber);
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    position: relative; z-index: 2; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;
+    padding: 16px 28px 18px; background: var(--panel);
+    box-shadow: 0 2px 0 var(--navy), 0 6px 0 var(--panel), 0 9px 0 var(--red), 0 14px 26px rgba(14,31,63,0.08);
+    margin-bottom: 9px;
   }
   .brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
-  .badge { flex: none; display: grid; place-items: center; width: 52px; height: 52px; background: var(--amber); color: var(--night);
-    font-family: var(--font-display); font-weight: 900; font-size: 18px; letter-spacing: 0;
-    clip-path: polygon(0 0, 100% 0, 100% 78%, 50% 100%, 0 78%); }
-  header h1 { margin: 0; font-family: var(--font-display); font-size: 30px; font-weight: 800; letter-spacing: 1px; line-height: 1;
-    text-transform: uppercase; color: var(--chalk); text-wrap: balance; }
-  header h1 .accent { color: var(--amber); }
-  header .subtitle { display: block; font-family: var(--font-cond); font-size: 14px; font-weight: 600; letter-spacing: 2.5px; color: var(--muted); margin-top: 6px; text-transform: uppercase; }
-  header .meta { display: flex; align-items: center; gap: 12px; font-family: var(--font-cond); font-size: 16px; font-weight: 600; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; }
-  header .meta #meta-line::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--red); margin-right: 8px; vertical-align: 1px; box-shadow: 0 0 8px var(--red); }
+  .badge { flex: none; display: grid; place-items: center; width: 54px; height: 60px; background: var(--navy); color: #fff;
+    font-family: var(--font-display); font-size: 15px; letter-spacing: 0.5px; border: 3px solid var(--red); outline: 2px solid var(--navy);
+    clip-path: polygon(0 0, 100% 0, 100% 72%, 50% 100%, 0 72%); padding-bottom: 8px; }
+  header h1 { margin: 0; font-family: var(--font-display); font-size: 28px; font-weight: 400; line-height: 1.05; color: var(--navy); text-transform: uppercase; letter-spacing: 0.5px; text-wrap: balance; }
+  header h1 .accent { color: var(--red); }
+  header .subtitle { display: block; font-family: var(--font-cond); font-size: 14px; font-weight: 700; letter-spacing: 2.5px; color: var(--muted); margin-top: 6px; text-transform: uppercase; }
+  header .meta { display: flex; align-items: center; gap: 12px; font-family: var(--font-cond); font-size: 16px; font-weight: 600; letter-spacing: 1px; color: var(--ink-2); text-transform: uppercase; }
+  header .meta #meta-line::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--win); margin-right: 8px; vertical-align: 1px; box-shadow: 0 0 0 3px rgba(19,138,75,0.18); }
 
-  .btn { border: 0; cursor: pointer; background: var(--amber); color: var(--night); font-family: var(--font-cond); font-size: 15px; font-weight: 700; letter-spacing: 1.5px;
-    padding: 7px 16px; text-transform: uppercase; transform: skewX(-10deg); }
-  .btn:hover { background: #ffc94d; }
-  .btn:active { transform: skewX(-10deg) translateY(1px); }
+  .btn { border: 0; cursor: pointer; background: var(--red); color: #fff; font-family: var(--font-cond); font-size: 15px; font-weight: 700; letter-spacing: 1.5px;
+    padding: 8px 18px; text-transform: uppercase; border-radius: 999px; box-shadow: 0 2px 0 #9e1d2b; }
+  .btn:hover { background: #e23446; }
+  .btn:active { transform: translateY(1px); box-shadow: 0 1px 0 #9e1d2b; }
+  .btn:disabled { opacity: .7; cursor: default; }
 
   main { max-width: 1200px; margin: 0 auto; padding: 0 16px; padding-block: 0 60px; position: relative; z-index: 1; }
 
-  /* Tabs: segmented scoreboard */
-  .tab-bar { display: inline-flex; margin: 20px 0 18px; background: var(--inset); border: 1px solid var(--line-strong); }
-  .tab-btn { border: 0; cursor: pointer; background: transparent; color: var(--muted); font-family: var(--font-display); font-size: 17px; font-weight: 800; letter-spacing: 1.5px;
-    padding: 10px 24px; text-transform: uppercase; transition: color .15s ease, background .15s ease; }
-  .tab-btn:hover { color: var(--chalk); }
-  .tab-btn.active { background: var(--amber); color: var(--night); }
+  /* Tabs */
+  .tab-bar { display: inline-flex; gap: 4px; margin: 22px 0 18px; padding: 4px; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; box-shadow: var(--shadow); }
+  .tab-btn { border: 0; cursor: pointer; background: transparent; color: var(--muted); font-family: var(--font-cond); font-size: 17px; font-weight: 700; letter-spacing: 1.5px;
+    padding: 8px 22px; text-transform: uppercase; border-radius: 999px; transition: color .15s ease, background .15s ease; }
+  .tab-btn:hover { color: var(--navy); }
+  .tab-btn.active { background: var(--navy); color: #fff; }
 
   /* Panels */
-  .card, .metric-card, .item { position: relative; background: var(--panel); border: 1px solid var(--line); min-width: 0; }
-  .card { padding: 18px 22px; margin-bottom: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+  .card, .metric-card, .item { position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; min-width: 0; }
+  .card { padding: 20px 22px; margin-bottom: 16px; box-shadow: var(--shadow); }
   .card h3, .filter-label, .collapsible > .card-toggle {
-    font-family: var(--font-display); font-size: 21px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: var(--chalk); margin: 0 0 4px; line-height: 1.1;
+    font-family: var(--font-display); font-size: 18px; font-weight: 400; letter-spacing: 0.5px; text-transform: uppercase; color: var(--navy); margin: 0 0 6px; line-height: 1.15;
   }
-  .card h3::before, .filter-label::before { content: ''; display: inline-block; width: 7px; height: 17px; background: var(--amber); margin-right: 10px; transform: skewX(-15deg); vertical-align: -1px; }
-  .filter-label { font-size: 17px; margin: 18px 0 10px; }
+  .filter-label { font-size: 15px; margin: 18px 0 10px; }
   .filter-label:first-child { margin-top: 0; }
   .sub, .section-sub { font-size: 15px; color: var(--muted); margin: 0 0 12px; max-width: 75ch; }
 
   .collapsible > .card-toggle { all: unset; display: flex; width: 100%; justify-content: space-between; align-items: center; cursor: pointer;
-    font-family: var(--font-display); font-size: 21px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; }
-  .collapsible > .card-toggle::after { content: '▾'; font-family: var(--font-body); font-size: 16px; color: var(--muted); transition: transform .15s ease; }
+    font-family: var(--font-display); font-size: 18px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .collapsible > .card-toggle::after { content: '▾'; font-family: var(--font-body); font-size: 16px; color: var(--faint); transition: transform .15s ease; }
   .collapsible.collapsed > .card-toggle::after { transform: rotate(-90deg); }
   .collapsible.collapsed .card-body { display: none; }
   .collapsible .card-body { margin-top: 14px; }
   .collapsible.collapsed { padding-block: 14px; }
-  .bests { background: linear-gradient(120deg, rgba(255,184,28,0.13), rgba(255,184,28,0.02) 60%), var(--panel); border-color: rgba(255,184,28,0.35); border-top: 3px solid var(--amber); }
-  .bests > .card-toggle { color: var(--amber); }
-  .oddities { background: linear-gradient(120deg, rgba(255,84,104,0.12), rgba(255,84,104,0.02) 60%), var(--panel); border-color: rgba(255,84,104,0.3); border-top: 3px solid var(--red); }
-  .oddities > .card-toggle { color: #ff8a99; }
+  .bests { border-top: 5px solid var(--gold); }
+  .bests > .card-toggle { color: var(--navy); }
+  .oddities { border-top: 5px solid var(--red); }
+  .oddities > .card-toggle { color: var(--navy); }
 
-  .section-title { display: inline-block; font-family: var(--font-display); font-size: 26px; font-weight: 900; letter-spacing: 1px; color: var(--night); background: var(--chalk);
-    text-transform: uppercase; margin: 26px 0 8px; padding: 2px 16px 0; transform: skewX(-10deg); line-height: 1.25; }
-  .section-divider { height: 0; margin: 26px 0; border: 0; border-top: 2px dashed rgba(238,242,247,0.18); }
+  .section-title { font-family: var(--font-display); font-size: 24px; font-weight: 400; letter-spacing: 0.5px; color: var(--navy); text-transform: uppercase; margin: 30px 0 6px; text-wrap: balance; }
+  .section-title::after { content: ''; display: block; width: 64px; height: 5px; margin-top: 8px; background: linear-gradient(180deg, var(--red) 0 2px, transparent 2px 3px, var(--navy) 3px 5px); }
+  .section-divider { height: 0; margin: 26px 0; border: 0; border-top: 1px solid var(--line-strong); }
 
-  /* Chips: jersey pills */
+  /* Chips */
   .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-  .chip { border: 1px solid var(--line-strong); border-radius: 999px; cursor: pointer; background: var(--panel-hi); color: var(--chalk);
+  .chip { border: 1px solid var(--line-strong); border-radius: 999px; cursor: pointer; background: var(--panel); color: var(--ink-2);
     font-family: var(--font-cond); font-size: 15px; font-weight: 600; letter-spacing: 0.8px; padding: 4px 14px; text-transform: uppercase; transition: background .15s ease, border-color .15s ease; }
-  .chip:hover { border-color: var(--chalk); }
-  .chip.active { background: var(--turf); border-color: var(--turf); color: var(--night); }
-  .chip .n { color: var(--amber); margin-left: 6px; font-weight: 500; }
-  .chip.active .n { color: rgba(10,17,32,0.7); }
-  .chip .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 7px; vertical-align: 0; box-shadow: 0 0 0 1px rgba(0,0,0,0.3); }
+  .chip:hover { border-color: var(--navy); color: var(--navy); }
+  .chip.active { background: var(--navy); border-color: var(--navy); color: #fff; }
+  .chip .n { color: var(--faint); margin-left: 6px; font-weight: 500; }
+  .chip.active .n { color: rgba(255,255,255,0.7); }
+  .chip .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 7px; vertical-align: 0; }
 
   /* Metrics: scoreboard tiles */
   .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-bottom: 12px; }
   .metric-grid.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .metric-card { padding: 12px 16px 14px; background: linear-gradient(180deg, var(--panel-hi), var(--panel)); border-top: 3px solid var(--line-strong); }
-  .metric-label { font-family: var(--font-cond); font-size: 14px; font-weight: 700; letter-spacing: 1.5px; color: var(--muted); text-transform: uppercase; margin: 0 0 2px; }
-  .metric-value { font-family: var(--font-display); font-size: 36px; font-weight: 800; letter-spacing: 0.5px; color: var(--chalk); font-variant-numeric: tabular-nums;
-    margin: 0; line-height: 1.05; overflow-wrap: anywhere; }
-  .metric-value.gold { color: var(--amber); }
-  .metric-value.name { font-size: 26px; line-height: 1.15; overflow-wrap: normal; word-break: normal; }
+  .metric-card { padding: 12px 16px 12px; box-shadow: var(--shadow); }
+  .metric-label { font-family: var(--font-cond); font-size: 14px; font-weight: 700; letter-spacing: 1.5px; color: var(--muted); text-transform: uppercase; margin: 0; }
+  .metric-value { font-family: var(--font-num); font-size: 44px; font-weight: 600; color: var(--navy); font-variant-numeric: tabular-nums; margin: 2px 0 0; line-height: 0.95; overflow-wrap: anywhere; }
+  .metric-value.gold { color: var(--red); }
+  .metric-value.name { font-family: var(--font-cond); font-size: 28px; font-weight: 700; line-height: 1.1; overflow-wrap: normal; word-break: normal; padding-top: 6px; }
   .metric-sub { font-size: 13px; color: var(--faint); margin: 4px 0 0; }
-  .up { color: var(--turf); } .down { color: var(--red); }
+  .up { color: var(--win); } .down { color: var(--loss); }
 
-  .item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
-  .item { padding: 12px 14px; background: rgba(10,17,32,0.6); }
-  .bests .item { border-left: 3px solid var(--amber); }
-  .oddities .item.trophy { border-left: 3px solid var(--turf); }
-  .oddities .item.shame { border-left: 3px solid var(--red); }
+  .item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+  .item { padding: 12px 14px; background: var(--panel-alt); border-color: var(--line); }
+  .bests .item { border-left: 4px solid var(--gold); }
+  .oddities .item.trophy { border-left: 4px solid var(--win); }
+  .oddities .item.shame { border-left: 4px solid var(--red); }
   .item .lbl { font-family: var(--font-cond); font-size: 13px; font-weight: 700; letter-spacing: 1.5px; color: var(--muted); text-transform: uppercase; }
-  .item .val { font-family: var(--font-display); font-size: 30px; font-weight: 800; color: var(--amber); font-variant-numeric: tabular-nums; line-height: 1.05; margin: 2px 0; overflow-wrap: anywhere; }
-  .oddities .item .val { color: var(--chalk); }
-  .item .who { color: var(--chalk); font-weight: 700; }
+  .item .val { font-family: var(--font-num); font-size: 38px; font-weight: 600; color: var(--navy); font-variant-numeric: tabular-nums; line-height: 0.95; margin: 4px 0 2px; overflow-wrap: anywhere; }
+  .item .who { color: var(--ink); font-weight: 700; }
   .item .s { font-size: 13px; color: var(--faint); }
 
   /* Charts + tables */
   .row2 { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 16px; }
   .row2 > .card { margin-bottom: 0; }
   .row2 + * { margin-top: 16px; }
-  .chart-wrap { position: relative; width: 100%; background: var(--inset); border: 1px solid var(--line); padding: 10px; }
+  .chart-wrap { position: relative; width: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
   .chart-wrap canvas { max-width: 100%; }
-  .scroll-table { overflow: auto; max-height: 560px; border: 1px solid var(--line); background: var(--inset); scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+  .scroll-table { overflow: auto; max-height: 560px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
   .scroll-table.flat { max-height: none; }
   table { width: 100%; border-collapse: collapse; font-size: 15px; font-variant-numeric: tabular-nums; }
-  th { text-align: left; padding: 8px 10px; color: var(--night); background: var(--chalk); font-family: var(--font-cond); font-weight: 700; font-size: 14px; letter-spacing: 1.2px;
+  th { text-align: left; padding: 9px 10px; color: #fff; background: var(--navy); font-family: var(--font-cond); font-weight: 700; font-size: 14px; letter-spacing: 1.2px;
     text-transform: uppercase; position: sticky; top: 0; z-index: 1; white-space: nowrap; }
   th.num, td.num { text-align: right; }
-  td { padding: 7px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
-  tbody tr:nth-child(even) td { background: rgba(238,242,247,0.02); }
-  tbody tr:hover td { background: rgba(255,184,28,0.07); }
-  tr.me td { background: rgba(47,212,122,0.08) !important; }
+  td { padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; color: var(--ink); }
+  tbody tr:nth-child(even) td { background: var(--panel-alt); }
+  tbody tr:hover td { background: #eaf0ff; }
+  tr.me td { background: #edf2ff !important; }
   tr.clickable { cursor: pointer; }
-  .rank { font-family: var(--font-display); font-size: 20px; font-weight: 800; color: var(--amber); }
+  .rank { font-family: var(--font-num); font-size: 24px; font-weight: 600; color: var(--navy); line-height: 1; }
   .player-cell { display: flex; align-items: center; gap: 8px; font-weight: 700; }
-  .swatch { width: 9px; height: 9px; border-radius: 50%; flex: none; }
-  .crown { font-family: var(--font-cond); font-size: 11px; font-weight: 700; letter-spacing: 1px; color: var(--night); background: var(--amber); padding: 0 5px; }
-  .pill { display: inline-block; padding: 0 9px; font-family: var(--font-cond); font-weight: 700; font-size: 14px; letter-spacing: 1px; border-radius: 999px; }
-  .pill-w { background: var(--turf); color: var(--night); }
-  .pill-l { background: var(--red); color: var(--night); }
-  .pill-t { background: var(--amber); color: var(--night); }
-  .score-cell.win { color: var(--amber); font-weight: 800; }
+  .swatch { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+  .crown { font-family: var(--font-cond); font-size: 11px; font-weight: 700; letter-spacing: 1px; color: var(--ink); background: var(--gold); padding: 1px 6px; border-radius: 3px; }
+  .pill { display: inline-block; padding: 0 9px; font-family: var(--font-cond); font-weight: 700; font-size: 14px; letter-spacing: 1px; border-radius: 999px; color: #fff; }
+  .pill-w { background: var(--win); }
+  .pill-l { background: var(--loss); }
+  .pill-t { background: var(--gold); color: var(--ink); }
+  .score-cell.win { color: var(--red); font-weight: 800; }
   .dim { color: var(--faint); }
   .spark { display: block; }
 
   .notes { display: grid; gap: 8px; }
-  .note { padding: 10px 14px; background: rgba(10,17,32,0.6); border: 1px solid var(--line); border-left: 4px solid var(--faint); }
-  .note.good { border-left-color: var(--turf); } .note.bad { border-left-color: var(--red); } .note.info { border-left-color: var(--amber); }
-  .note b { display: block; font-family: var(--font-cond); font-weight: 700; letter-spacing: 1.2px; color: var(--chalk); text-transform: uppercase; font-size: 16px; }
-  .note span { color: var(--muted); font-size: 15px; }
+  .note { padding: 10px 14px; background: var(--panel-alt); border: 1px solid var(--line); border-left: 4px solid var(--faint); border-radius: 8px; }
+  .note.good { border-left-color: var(--win); } .note.bad { border-left-color: var(--red); } .note.info { border-left-color: var(--royal); }
+  .note b { display: block; font-family: var(--font-cond); font-weight: 700; letter-spacing: 1.2px; color: var(--navy); text-transform: uppercase; font-size: 16px; }
+  .note span { color: var(--ink-2); font-size: 15px; }
 
   .empty-state { text-align: center; padding: 48px 16px; color: var(--muted); }
-  .empty-state h2 { font-family: var(--font-display); font-size: 26px; font-weight: 800; color: var(--amber); margin: 0 0 10px; text-transform: uppercase; }
+  .empty-state h2 { font-family: var(--font-display); font-size: 24px; font-weight: 400; color: var(--navy); margin: 0 0 10px; text-transform: uppercase; }
   .empty-state p { max-width: 52ch; margin: 0 auto; }
-  .tag-live { font-family: var(--font-cond); font-size: 11px; font-weight: 700; letter-spacing: 1.5px; color: #fff; background: var(--red); padding: 1px 6px; margin-left: 8px; vertical-align: 1px; }
+  .tag-live { font-family: var(--font-cond); font-size: 11px; font-weight: 700; letter-spacing: 1.5px; color: #fff; background: var(--red); padding: 1px 6px; margin-left: 8px; vertical-align: 1px; border-radius: 3px; }
+  .foot { margin-top: 28px; padding-top: 14px; border-top: 1px solid var(--line-strong); color: var(--faint); font-size: 14px; text-align: center; }
+  .foot a { color: var(--muted); }
+  .foot a:hover { color: var(--royal); }
 
   @media (max-width: 720px) {
     body { font-size: 15px; }
-    header { padding: 12px 16px; }
-    .badge { width: 42px; height: 42px; font-size: 16px; }
-    header h1 { font-size: 22px; }
+    header { padding: 12px 16px 14px; }
+    .badge { width: 44px; height: 50px; font-size: 12px; }
+    header h1 { font-size: 20px; }
     header .subtitle { font-size: 12px; letter-spacing: 1.5px; }
     header .meta { width: 100%; justify-content: space-between; font-size: 14px; }
     .tab-bar { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
-    .tab-btn { font-size: 15px; padding: 10px 6px; }
+    .tab-btn { font-size: 15px; padding: 8px 6px; }
     .card { padding: 14px 12px; }
     .row2 { grid-template-columns: minmax(0,1fr); }
     .metric-grid, .metric-grid.four { grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; }
-    .metric-value { font-size: 28px; }
+    .metric-value { font-size: 36px; }
     .item-grid { grid-template-columns: repeat(2, minmax(0,1fr)); gap: 6px; }
-    .item .val { font-size: 24px; }
+    .item .val { font-size: 30px; }
     .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px;
       mask-image: linear-gradient(90deg, #000 88%, transparent); -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); }
     .chips::-webkit-scrollbar { display: none; }
     .chip { flex: 0 0 auto; }
-    .section-title { font-size: 21px; }
+    .section-title { font-size: 20px; }
     table { font-size: 14px; } td, th { padding: 6px; }
   }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
-  .foot { margin-top: 28px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--faint); font-size: 14px; text-align: center; }
-  .foot a { color: var(--muted); }
-  .foot a:hover { color: var(--amber); }
 </style>
 </head>
 <body>
@@ -243,11 +241,12 @@
 <script>
 (function () {
   'use strict';
-  const PALETTE = ['#ffb81c', '#2fd47a', '#4cc3ff', '#ff5468', '#a98bff', '#ff8a3d', '#ff7ac6', '#22d3c5'];
+  const PALETTE = ['#c98a00', '#1f4fd1', '#d42a3c', '#138a4b', '#7c3aed', '#ea580c', '#db2777', '#0e9488'];
   const S = { meta: null, days: [], tab: 'overview', period: 'week', players: new Set(), range: '30', focus: null, open: { bests: true, odd: true } };
   const charts = {};
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const pl = (n, w) => fmt(n) + ' ' + w + (n === 1 ? '' : 's');
   const fmt = (n, d = 0) => (n == null || isNaN(n)) ? '—' : Number(n).toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
   const sign = (n, d = 0) => (n == null || isNaN(n)) ? '—' : (n > 0 ? '+' : n < 0 ? '−' : '±') + fmt(Math.abs(n), d);
   const toDate = (s) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d, 12); };
@@ -288,7 +287,7 @@
     $('title').innerHTML = esc(M.m.group?.name || 'GeoSports') + ' <span class="accent">Scoreboard</span>';
     $('subtitle').textContent = 'GeoSports group ' + (M.m.group?.code || '') + ' · daily results';
     const synced = M.m.fetchedAt ? new Date(M.m.fetchedAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—';
-    $('meta-line').textContent = M.complete.length + ' days tracked · synced ' + synced;
+    $('meta-line').textContent = pl(M.complete.length, 'day') + ' tracked · synced ' + synced;
     Object.values(charts).forEach((c) => c.destroy()); for (const k in charts) delete charts[k];
     $('app').innerHTML = S.tab === 'overview' ? overviewHTML(M) : playerHTML(M);
     if (S.tab === 'overview') overviewCharts(M); else playerCharts(M);
@@ -317,12 +316,12 @@
     const bAvg = by((p) => p.alltime?.avg), bWon = by((p) => p.alltime?.won), bStreak = by((p) => p.currentStreak), bGames = by((p) => p.alltime?.games), bWeek = by((p) => p.week?.avg);
     let hi = null; complete.forEach((d) => d.entries.forEach(([id, sc]) => { if (!hi || sc > hi.score) hi = { date: d.date, score: sc, id }; }));
     const bests = [
-      bAvg && ['Best season avg', fmt(bAvg.alltime.avg), bAvg.name, `over ${fmt(bAvg.alltime.games)} rounds`],
+      bAvg && ['Best season avg', fmt(bAvg.alltime.avg), bAvg.name, `over ${pl(bAvg.alltime.games, 'round')}`],
       hi && ['Highest round', fmt(hi.score), byId[hi.id].name, fmtDate(hi.date, { month: 'short', day: 'numeric' })],
       bWon && ['Most days won', fmt(bWon.alltime.won), bWon.name, `${fmt(100 * bWon.alltime.won / bWon.alltime.games, 0)}% of rounds played`],
       bStreak && bStreak.currentStreak > 0 && ['Longest active streak', fmt(bStreak.currentStreak) + (bStreak.currentStreak === 1 ? ' day' : ' days'), bStreak.name, 'consecutive days played'],
       bGames && ['Most rounds played', fmt(bGames.alltime.games), bGames.name, `since ${fmtDate(M.m.start)}`],
-      bWeek && ['Best avg this week', fmt(bWeek.week.avg), bWeek.name, `${bWeek.week.games} rounds`],
+      bWeek && ['Best avg this week', fmt(bWeek.week.avg), bWeek.name, pl(bWeek.week.games, 'round')],
     ].filter(Boolean);
 
     // oddities
@@ -340,11 +339,11 @@
     const odd = [
       blow && ['trophy', 'Biggest blowout', '+' + fmt(blow.margin), blow.winners.map(name).join(' & '), `won ${fmtDate(blow.date)} with ${fmt(blow.top)}`],
       close && ['trophy', 'Photo finish', close.margin === 0 ? 'Tie' : '+' + fmt(close.margin), close.winners.map(name).join(' & '), close.margin === 0 ? `tied for the win ${fmtDate(close.date)}` : `edged it ${fmtDate(close.date)}`],
-      hot && hot.delta > 0 && ['trophy', 'Hot hand', sign(hot.delta), esc(hot.p.name), `last 7 days (${hot.n} rounds) vs season avg`],
-      wr && ['trophy', 'The closer', fmt(100 * wr.alltime.won / wr.alltime.games, 1) + '%', esc(wr.name), `${wr.alltime.won} wins in ${wr.alltime.games} rounds`],
+      hot && hot.delta > 0 && ['trophy', 'Hot hand', sign(hot.delta), esc(hot.p.name), `last 7 days (${pl(hot.n, 'round')}) vs season avg`],
+      wr && ['trophy', 'The closer', fmt(100 * wr.alltime.won / wr.alltime.games, 1) + '%', esc(wr.name), `${pl(wr.alltime.won, 'win')} in ${pl(wr.alltime.games, 'round')}`],
       low && ['shame', 'Rough round', fmt(low.score), name(low.id), `lowest group score, ${fmtDate(low.date)}`],
       swing && ['shame', 'Wildest swing', sign(swing.d), name(swing.id), `day-over-day, ${fmtDate(swing.date)}`],
-      cold && cold.delta < 0 && ['shame', 'Ice cold', sign(cold.delta), esc(cold.p.name), `last 7 days (${cold.n} rounds) vs season avg`],
+      cold && cold.delta < 0 && ['shame', 'Ice cold', sign(cold.delta), esc(cold.p.name), `last 7 days (${pl(cold.n, 'round')}) vs season avg`],
       mia.length && ['shame', 'Scratched', mia.length + (mia.length === 1 ? ' player' : ' players'), mia.map((p) => esc(p.name)).join(', '), 'no rounds this week'],
     ].filter(Boolean);
 
@@ -429,8 +428,8 @@
     const w = 84, h = 22, lo = 500, hi = 1000;
     const xy = pts.map((v, i) => v == null ? null : [3 + i * (w - 6) / 6, h - 3 - (Math.max(lo, Math.min(hi, v)) - lo) / (hi - lo) * (h - 6)]);
     let path = '', pen = false; xy.forEach((p) => { if (!p) { pen = false; return; } path += (pen ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1); pen = true; });
-    const dots = xy.map((p, i) => p ? `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${i === 6 ? 2.6 : 1.6}" fill="${i === 6 ? '#ffb81c' : '#2fd47a'}"/>` : `<circle cx="${(3 + i * (w - 6) / 6).toFixed(1)}" cy="${h - 3}" r="1" fill="#5d6b85"/>`).join('');
-    return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true"><path d="${path}" fill="none" stroke="#2fd47a" stroke-opacity="0.7" stroke-width="1.4"/>${dots}</svg>`;
+    const dots = xy.map((p, i) => p ? `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${i === 6 ? 2.6 : 1.6}" fill="${i === 6 ? '#d42a3c' : '#13306b'}"/>` : `<circle cx="${(3 + i * (w - 6) / 6).toFixed(1)}" cy="${h - 3}" r="1" fill="#b6bfcf"/>`).join('');
+    return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true"><path d="${path}" fill="none" stroke="#13306b" stroke-opacity="0.55" stroke-width="1.4"/>${dots}</svg>`;
   }
 
   function leaderboardTable(M) {
@@ -471,11 +470,11 @@
 
   // ---------- Charts ----------
   function baseOpts(extra) {
-    const grid = { color: 'rgba(238,242,247,0.07)' }, ticks = { color: '#8d9bb4', font: { family: "'Barlow Condensed', sans-serif", size: 13, weight: 600 } };
+    const grid = { color: 'rgba(14,31,63,0.08)' }, ticks = { precision: 0, color: '#5d6a82', font: { family: "'Barlow Condensed', sans-serif", size: 13, weight: 600 } };
     return Object.assign({
       responsive: true, maintainAspectRatio: false, animation: false,
-      plugins: { legend: { labels: { color: '#eef2f7', boxWidth: 10, boxHeight: 10, font: { family: "'Barlow Condensed', sans-serif", size: 13, weight: 600 } } },
-        tooltip: { backgroundColor: 'rgba(13,22,40,0.97)', borderColor: '#ffb81c', borderWidth: 1, titleColor: '#ffb81c', bodyColor: '#eef2f7',
+      plugins: { legend: { labels: { color: '#0e1f3f', boxWidth: 10, boxHeight: 10, font: { family: "'Barlow Condensed', sans-serif", size: 13, weight: 600 } } },
+        tooltip: { backgroundColor: 'rgba(255,255,255,0.98)', borderColor: '#c4cddd', borderWidth: 1, titleColor: '#13306b', bodyColor: '#0e1f3f',
           titleFont: { family: "'Barlow Condensed', sans-serif", weight: 700 }, bodyFont: { family: "'Barlow Condensed', sans-serif" } } },
       scales: { x: { grid, ticks }, y: { grid, ticks } }
     }, extra || {});
@@ -490,14 +489,14 @@
     const ds = shown.map((p) => ({ label: p.name, data: dates.map((d) => lookup[d][p.userId] ?? null), borderColor: p.color, backgroundColor: p.color,
       borderWidth: p.userId === M.me ? 2.6 : 1.8, pointRadius: dates.length > 40 ? 0 : 3, pointHoverRadius: 5, tension: 0.25, spanGaps: false }));
     charts.daily = new Chart($('c-daily'), { type: 'line', data: { labels: dates.map((d) => fmtDate(d)), datasets: ds },
-      options: baseOpts({ interaction: { mode: 'index', intersect: false }, scales: { x: { grid: { color: 'rgba(238,242,247,0.05)' }, ticks: { color: '#8d9bb4', maxRotation: 0, autoSkip: true, maxTicksLimit: 10 } }, y: { grid: { color: 'rgba(238,242,247,0.07)' }, ticks: { color: '#8d9bb4' } } } }) });
+      options: baseOpts({ interaction: { mode: 'index', intersect: false }, scales: { x: { grid: { color: 'rgba(14,31,63,0.05)' }, ticks: { color: '#5d6a82', maxRotation: 0, autoSkip: true, maxTicksLimit: 10 } }, y: { grid: { color: 'rgba(14,31,63,0.08)' }, ticks: { color: '#5d6a82' } } } }) });
 
     const wins = [...shown].sort((a, b) => (b.alltime?.won || 0) - (a.alltime?.won || 0));
     charts.wins = new Chart($('c-wins'), { type: 'bar', data: { labels: wins.map((p) => p.name), datasets: [{ data: wins.map((p) => p.alltime?.won || 0), backgroundColor: wins.map((p) => p.color + 'b3'), borderColor: wins.map((p) => p.color), borderWidth: 1 }] },
       options: baseOpts({ indexAxis: 'y', plugins: { legend: { display: false }, tooltip: baseOpts().plugins.tooltip } }) });
 
     const form = shown.map((p) => { const r = M.recent(p.userId, 7); return { p, n: r.length, d: r.length && p.alltime?.avg != null ? Math.round(mean(r) - p.alltime.avg) : null }; }).filter((x) => x.d != null).sort((a, b) => b.d - a.d);
-    charts.form = new Chart($('c-form'), { type: 'bar', data: { labels: form.map((x) => `${x.p.name} (${x.n})`), datasets: [{ data: form.map((x) => x.d), backgroundColor: form.map((x) => x.d >= 0 ? 'rgba(47,212,122,0.7)' : 'rgba(255,84,104,0.7)'), borderColor: form.map((x) => x.d >= 0 ? '#2fd47a' : '#ff5468'), borderWidth: 1 }] },
+    charts.form = new Chart($('c-form'), { type: 'bar', data: { labels: form.map((x) => `${x.p.name} (${x.n})`), datasets: [{ data: form.map((x) => x.d), backgroundColor: form.map((x) => x.d >= 0 ? 'rgba(19,138,75,0.75)' : 'rgba(200,40,58,0.75)'), borderColor: form.map((x) => x.d >= 0 ? '#138a4b' : '#c8283a'), borderWidth: 1 }] },
       options: baseOpts({ indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { ...baseOpts().plugins.tooltip, callbacks: { label: (c) => sign(c.raw) + ' pts vs season' } } } }) });
   }
 
@@ -525,8 +524,8 @@
       if (pos === 0 && ranked[1]) notes.push(['good', `#1 this season`, `Leads ${esc(ranked[1].name)} by ${fmt(at.avg - ranked[1].alltime.avg)} pts on average.`]);
       else if (pos > 0) notes.push(['info', `#${pos + 1} of ${ranked.length} this season`, `${fmt(ranked[pos - 1].alltime.avg - at.avg)} pts behind ${esc(ranked[pos - 1].name)} for #${pos}.${ranked[pos + 1] ? ` ${fmt(at.avg - ranked[pos + 1].alltime.avg)} pts clear of ${esc(ranked[pos + 1].name)}.` : ''}`]);
     }
-    if (r7.length >= 2) { const d = mean(r7) - at.avg; notes.push([d >= 15 ? 'good' : d <= -15 ? 'bad' : 'info', d >= 15 ? 'Running hot' : d <= -15 ? 'In a slump' : 'Playing to form', `${fmt(mean(r7))} avg over the last 7 days (${r7.length} rounds), ${sign(d)} vs season.${r7.length < 3 ? ' Small sample.' : ''}`]); }
-    else notes.push(['bad', 'Barely played lately', `${r7.length} round${r7.length === 1 ? '' : 's'} in the last 7 days.`]);
+    if (r7.length >= 2) { const d = mean(r7) - at.avg; notes.push([d >= 15 ? 'good' : d <= -15 ? 'bad' : 'info', d >= 15 ? 'Running hot' : d <= -15 ? 'In a slump' : 'Playing to form', `${fmt(mean(r7))} avg over the last 7 days (${pl(r7.length, 'round')}), ${sign(d)} vs season.${r7.length < 3 ? ' Small sample.' : ''}`]); }
+    else if (M.complete.length >= 7) notes.push(['bad', 'Barely played lately', `${r7.length} round${r7.length === 1 ? '' : 's'} in the last 7 days.`]);
     if (winRate != null && groupWin != null) notes.push([winRate >= groupWin ? 'good' : 'neutral', 'Closer rate', `Wins ${fmt(winRate, 1)}% of rounds played. Across the group, ${fmt(groupWin, 1)}% of rounds are wins.`]);
     if (s.length >= 5) notes.push(['info', 'Consistency', `Rounds swing about ±${fmt(sd(s))} pts. Range ${fmt(worst)} to ${fmt(best)}.`]);
     if (M.series[p.userId].length >= 14) {
@@ -563,14 +562,14 @@
       </section>
 
       <h2 class="section-title">${esc(p.name)} · ${p.role === 'owner' ? 'Group owner' : 'Member'}</h2>
-      <p class="section-sub">Joined ${p.memberSince ? fmtDate(p.memberSince, { month: 'long', day: 'numeric', year: 'numeric' }) : '—'}. Stats cover ${fmt(s.length)} rounds since the season started on ${esc(fmtDate(M.m.start))}.</p>
+      <p class="section-sub">Joined ${p.memberSince ? fmtDate(p.memberSince, { month: 'long', day: 'numeric', year: 'numeric' }) : '—'}. Stats cover ${pl(s.length, 'round')} since the season started on ${esc(fmtDate(M.m.start))}.</p>
       <div class="metric-grid four">
         ${metric('Season avg', fmt(at.avg), pos >= 0 ? `#${pos + 1} in the group` : 'not ranked')}
         ${metric('Rounds played', fmt(at.games), `since ${fmtDate(M.m.start)}`)}
         ${metric('Days won', fmt(at.won), winRate != null ? `${fmt(winRate, 1)}% win rate` : '—')}
         ${metric('Current streak', fmt(p.currentStreak || 0) + ' d', p.currentStreak ? 'consecutive days' : 'no active streak')}
-        ${metric('This week', fmt(wk.avg), wk.games ? `<span class="${dWeek >= 0 ? 'up' : 'down'}">${sign(dWeek)}</span> vs season · ${wk.games} rounds` : 'no rounds yet')}
-        ${metric('Last 30 days', fmt(mean(r30)), `${r30.length} tracked rounds`)}
+        ${metric('This week', fmt(wk.avg), wk.games ? `<span class="${dWeek >= 0 ? 'up' : 'down'}">${sign(dWeek)}</span> vs season · ${pl(wk.games, 'round')}` : 'no rounds yet')}
+        ${metric('Last 30 days', fmt(mean(r30)), pl(r30.length, 'round'))}
         ${metric('Best round', fmt(best), best != null ? fmtDate(M.series[p.userId].find((x) => x.score === best).date) : '—', true)}
         ${metric('Worst round', fmt(worst), worst != null ? fmtDate(M.series[p.userId].find((x) => x.score === worst).date) : '—')}
       </div>
@@ -608,11 +607,11 @@
     const gAvg = Object.fromEntries(M.complete.map((d) => [d.date, d.avg != null ? Math.round(d.avg) : null]));
     const ds = [
       { label: p.name, data: ser.map((x) => x.score), borderColor: p.color, backgroundColor: p.color + '33', fill: true, borderWidth: 1.6, pointRadius: ser.length > 60 ? 1.5 : 3, tension: 0.2 },
-      { label: '5-round avg', data: roll, borderColor: '#eef2f7', borderWidth: 2.4, pointRadius: 0, tension: 0.3, spanGaps: true },
-      { label: 'Group avg', data: ser.map((x) => gAvg[x.date] ?? null), borderColor: '#ff5468', borderDash: [5, 4], borderWidth: 1.6, pointRadius: 0, spanGaps: true }
+      { label: '5-round avg', data: roll, borderColor: '#0e1f3f', borderWidth: 2.4, pointRadius: 0, tension: 0.3, spanGaps: true },
+      { label: 'Group avg', data: ser.map((x) => gAvg[x.date] ?? null), borderColor: '#d42a3c', borderDash: [5, 4], borderWidth: 1.6, pointRadius: 0, spanGaps: true }
     ];
     charts.trend = new Chart($('c-trend'), { type: 'line', data: { labels: ser.map((x) => fmtDate(x.date)), datasets: ds },
-      options: baseOpts({ interaction: { mode: 'index', intersect: false }, scales: { x: { grid: { color: 'rgba(238,242,247,0.05)' }, ticks: { color: '#8d9bb4', maxRotation: 0, autoSkip: true, maxTicksLimit: 10 } }, y: { grid: { color: 'rgba(238,242,247,0.07)' }, ticks: { color: '#8d9bb4' } } } }) });
+      options: baseOpts({ interaction: { mode: 'index', intersect: false }, scales: { x: { grid: { color: 'rgba(14,31,63,0.05)' }, ticks: { color: '#5d6a82', maxRotation: 0, autoSkip: true, maxTicksLimit: 10 } }, y: { grid: { color: 'rgba(14,31,63,0.08)' }, ticks: { color: '#5d6a82' } } } }) });
 
     const bands = [['Under 600', 0, 600], ['600s', 600, 700], ['700s', 700, 800], ['800s', 800, 900], ['900+', 900, 99999]];
     const counts = bands.map(([, a, b]) => ser.filter((x) => x.score >= a && x.score < b).length);
@@ -712,7 +711,7 @@
   }
 
   function showError(msg) {
-    $('app').innerHTML = `<div class="card empty-state"><h2>Can’t load the scores</h2><p>${esc(msg)}</p><p style="margin-top:12px"><a href="${SHEET_URL}" target="_blank" rel="noopener" style="color:var(--amber)">Open the Google Sheet</a></p></div>`;
+    $('app').innerHTML = `<div class="card empty-state"><h2>Can’t load the scores</h2><p>${esc(msg)}</p><p style="margin-top:12px"><a href="${SHEET_URL}" target="_blank" rel="noopener" style="color:var(--royal)">Open the Google Sheet</a></p></div>`;
   }
   async function syncNow() {
     const btn = $('sync-btn'); btn.disabled = true; btn.textContent = '↻ Syncing…';
