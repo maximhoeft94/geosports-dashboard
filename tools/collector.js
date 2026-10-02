@@ -19,10 +19,10 @@
       const j = await get('/api/results/daily?date=' + ds);
       if (!j || !Array.isArray(j.guesses) || !j.guesses.length) continue;
       name = j.username || name;
-      days.push([ds, j.totalScore, j.guesses.map((g) => [g.questionIndex + 1, (g.answer && g.answer.name) || '', Math.round(g.distanceMiles * 10) / 10, g.rawScore, g.multiplier, g.score])]);
+      days.push([ds, j.totalScore, j.guesses.map((g) => [g.questionIndex + 1, Math.round(g.distanceMiles * 10) / 10, g.rawScore, g.multiplier, g.score])]);
     }
     if (!days.length) { msg('No rounds found since the season started. Play a round, then try again.'); return; }
-    const code = 'GSQ1:' + btoa(unescape(encodeURIComponent(JSON.stringify({ v: 1, id: board.currentUserId, u: name, d: days }))));
+    const code = 'GSQ2:' + btoa(unescape(encodeURIComponent(JSON.stringify({ v: 2, id: board.currentUserId, u: name, d: days }))));
     msg('Found ' + days.length + (days.length === 1 ? ' round' : ' rounds') + '. Copy the code below and text it to Maxim.');
     const ta = document.createElement('textarea');
     ta.value = code; ta.readOnly = true;

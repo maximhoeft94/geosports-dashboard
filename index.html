@@ -700,29 +700,26 @@
     const sharers = new Set(S.q.map((x) => x.uid));
     const who = esc(p.name) + '’s';
     if (!mine.length) {
-      return `<section class="card"><h3>Question breakdown</h3>
-        <p class="sub" style="margin:0">${esc(p.name)} hasn’t shared question scores yet. GeoSports only shows each player their own questions, so they need to run the one-click share tool once in a while: <a href="share.html">${SHARE_LABEL}</a>.</p>
+      return `<section class="card"><h3>Average score per question</h3>
+        <p class="sub" style="margin:0">${esc(p.name)} hasn’t shared per-question scores yet. GeoSports only shows each player their own questions, so they need to run the one-click share tool once in a while: <a href="share.html">${SHARE_LABEL}</a>.</p>
         <p class="sub" style="margin:8px 0 0">${sharers.size} of ${M.members.length} players have shared so far.</p></section>`;
     }
     const st = qStats(mine), grp = qStats(S.q);
     const days = new Set(mine.map((x) => x.date)).size;
-    const best = [...mine].sort((a, b) => a.miles - b.miles)[0], worst = [...mine].sort((a, b) => b.miles - a.miles)[0];
     const strong = st.filter(Boolean).sort((a, b) => b.pct - a.pct)[0], weak = st.filter(Boolean).sort((a, b) => a.pct - b.pct)[0];
     const tile = (s) => s ? `<div class="item qtile"><div class="lbl">Question ${s.q} · ×${s.mult}</div><div class="val">${fmt(s.avgPts)}<span class="of"> / ${fmt(s.max)}</span></div>
-        <div class="s">${fmt(s.pct)}% of max · base ${fmt(s.avgBase)}/100 · typical miss ${fmt(s.medMiles)} mi</div></div>` : '';
+        <div class="s">${fmt(s.pct)}% of max · ${pl(s.n, 'round')}</div></div>` : '';
     const recent = [...new Set(mine.map((x) => x.date))].sort().reverse().slice(0, 10).map((d) => {
       const r = mine.filter((x) => x.date === d).sort((a, b) => a.q - b.q);
-      return `<tr><td>${esc(fmtDate(d, { weekday: 'short', month: 'short', day: 'numeric' }))}</td>${r.map((x) => `<td class="num" title="${esc(x.loc)} · ${fmt(x.miles, 1)} mi off">${fmt(x.pts)}</td>`).join('')}<td class="num"><b>${fmt(r.reduce((t, x) => t + x.pts, 0))}</b></td></tr>`;
+      return `<tr><td>${esc(fmtDate(d, { weekday: 'short', month: 'short', day: 'numeric' }))}</td>${r.map((x) => `<td class="num">${fmt(x.pts)}</td>`).join('')}<td class="num"><b>${fmt(r.reduce((t, x) => t + x.pts, 0))}</b></td></tr>`;
     }).join('');
     return `<section class="card">
-        <h3>Question breakdown</h3>
+        <h3>Average score per question</h3>
         <p class="sub">${who} average points on each of the day’s five questions, from ${pl(days, 'shared round')}. Later questions carry bigger multipliers, so a perfect day is 1,000.</p>
         <div class="item-grid q-grid">${st.map(tile).join('')}</div>
         <div class="notes" style="margin-top:12px">
           <div class="note good"><b>Strongest question</b><span>Question ${strong.q}: ${fmt(strong.pct)}% of the max on average.</span></div>
           <div class="note bad"><b>Weakest question</b><span>Question ${weak.q}: ${fmt(weak.pct)}% of the max on average.</span></div>
-          <div class="note info"><b>Closest guess</b><span>${esc(best.loc)}, ${fmt(best.miles, 1)} miles off (${esc(fmtDate(best.date))}, Q${best.q}).</span></div>
-          <div class="note"><b>Biggest miss</b><span>${esc(worst.loc)}, ${fmt(worst.miles, 1)} miles off (${esc(fmtDate(worst.date))}, Q${worst.q}).</span></div>
         </div>
         <div class="chart-wrap" style="height:260px;margin-top:12px"><canvas id="c-q" role="img" aria-label="Average share of max points per question, player vs group"></canvas></div>
         <p class="sub" style="margin:10px 0 6px">Group bars average everyone who has shared (${sharers.size} of ${M.members.length} players).</p>
@@ -833,7 +830,7 @@
     // One row per player per question. Rows only count when that day's question points add up to the official daily score.
     const official = {}; days.forEach((d) => { official[d.date] = d.scores; });
     const q = qrows.filter((r) => /^\d{4}-\d{2}-\d{2}$/.test(r.Date) && r.Date >= start && r['User ID']).map((r) => ({
-      date: r.Date, uid: r['User ID'], q: num(r.Question), loc: r.Location, miles: num(r['Miles off']), base: num(r['Base score']), mult: num(r.Multiplier), pts: num(r.Points), src: r.Source }));
+      date: r.Date, uid: r['User ID'], q: num(r.Question), miles: num(r['Miles off']), base: num(r['Base score']), mult: num(r.Multiplier), pts: num(r.Points), src: r.Source }));
     const byDay = {}; q.forEach((x) => { const k = x.uid + '|' + x.date; (byDay[k] = byDay[k] || []).push(x); });
     S.q = Object.entries(byDay).filter(([k, xs]) => { const [uid, date] = k.split('|'); return xs.length === 5 && official[date] && official[date][uid] === xs.reduce((t, x) => t + x.pts, 0); }).flatMap(([, xs]) => xs);
   }
