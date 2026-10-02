@@ -139,6 +139,10 @@
   .metric-value.gold { color: var(--red); }
   .metric-value.name { font-family: var(--font-cond); font-size: 28px; font-weight: 700; line-height: 1.1; overflow-wrap: normal; word-break: normal; padding-top: 6px; }
   .metric-sub { font-size: 13px; color: var(--faint); margin: 4px 0 0; }
+  .metric-who { font-family: var(--font-cond); font-size: 18px; font-weight: 700; color: var(--ink); margin: 4px 0 0; line-height: 1.15; }
+  .tile-lead { box-shadow: inset 0 4px 0 var(--gold), var(--shadow); }
+  .tile-low { box-shadow: inset 0 4px 0 var(--red), var(--shadow); }
+  .tile-low .metric-value { color: var(--red); }
   .up { color: var(--win); } .down { color: var(--loss); }
 
   .item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
@@ -383,14 +387,9 @@
       ${listSection('bench', 'bench', 'You’re Benched!', bottom, `The season’s ${nList === 1 ? 'worst single round' : nList + ' worst single rounds'}. Tied scores are listed by date, earliest first.`)}
 
       <h2 class="section-title">Season Totals</h2>
-      <p class="section-sub">Totals since the season started on ${esc(fmtDate(M.m.start, { month: 'long', day: 'numeric' }))}. Not affected by filters.</p>
+      <p class="section-sub">Calculated from every round since the season started on ${esc(fmtDate(M.m.start, { month: 'long', day: 'numeric' }))}. Not affected by filters.</p>
       <div class="metric-grid">
-        ${metric('Members', fmt(members.length), `${activeWeek} played this week`)}
-        ${metric('Rounds played', fmt(totalGames), 'all members, this season')}
-        ${metric('Group avg', fmt(groupAvg), 'per round, all members')}
-        ${metric('Days won', fmt(members.reduce((s, p) => s + (p.alltime?.won || 0), 0)), `${fmt(100 * members.reduce((s, p) => s + (p.alltime?.won || 0), 0) / (totalGames || 1), 1)}% of all rounds`)}
-        ${metric("Today's leader", leader ? esc(byId[leader.userId]?.name || '?') : '—', leader ? `${fmt(leader.score)} · ${todayRows.length} of ${members.length} played` : 'no rounds yet today', true, true)}
-        ${metric('Days tracked', fmt(complete.length), firstFull ? `since ${fmtDate(firstFull)}` : 'starts with the first refresh')}
+        ${seasonTiles(M)}
       </div>
 
       <hr class="section-divider">
@@ -434,6 +433,31 @@
         <p class="sub">Every tracked day, newest first. The day’s top score is highlighted.</p>
         <div class="scroll-table">${resultsTable(M)}</div>
       </section>`;
+  }
+
+  // Season Totals: six tiles, all calculated from tracked rounds since the season start.
+  function seasonTiles(M) {
+    const { members, days, asOf } = M;
+    const names = (list) => list.map((p) => esc(p.name)).join(' & ');
+    const played = members.filter((p) => p.alltime?.games > 0);
+    const hi = played.length ? Math.max(...played.map((p) => p.alltime.avg)) : null;
+    const lo = played.length ? Math.min(...played.map((p) => p.alltime.avg)) : null;
+    const leaders = played.filter((p) => p.alltime.avg === hi), trailers = played.filter((p) => p.alltime.avg === lo);
+    const all = []; days.forEach((d) => Object.entries(d.scores).forEach(([id, sc]) => { if (M.byId[id]) all.push(sc); }));
+    const from7 = addDays(asOf, -6);
+    const r7 = members.map((p) => { const s = days.filter((d) => d.date >= from7 && d.date <= asOf && d.scores[p.userId] != null).map((d) => d.scores[p.userId]); return { p, n: s.length, avg: mean(s) }; }).filter((x) => x.n);
+    const hi7 = r7.length ? Math.max(...r7.map((x) => x.avg)) : null;
+    const lead7 = r7.filter((x) => x.avg === hi7);
+    const possible = members.length * days.length;
+    const tile = (label, value, who, sub, cls) => `<div class="metric-card ${cls || ''}"><p class="metric-label">${label}</p><p class="metric-value">${value}</p>${who ? `<p class="metric-who">${who}</p>` : ''}<p class="metric-sub">${sub}</p></div>`;
+    return [
+      tile('Overall leader', fmt(hi), leaders.length ? names(leaders) : '—', leaders.length ? `season avg · ${leaders.length === 1 ? pl(leaders[0].alltime.games, 'round') : 'tied'}` : 'no rounds yet', 'tile-lead'),
+      tile('Needs to step it up', fmt(lo), played.length > 1 ? names(trailers) : '—', played.length > 1 ? `lowest season avg · ${trailers.length === 1 ? pl(trailers[0].alltime.games, 'round') : 'tied'}` : 'needs 2+ players with rounds', 'tile-low'),
+      tile('Group average', fmt(mean(all)), '', `per round, all ${pl(all.length, 'round')}`),
+      tile('7-day leader', fmt(hi7), lead7.length ? lead7.map((x) => esc(x.p.name)).join(' & ') : '—', lead7.length ? `avg over the last 7 days · ${lead7.length === 1 ? pl(lead7[0].n, 'round') : 'tied'}` : 'no rounds in the last 7 days'),
+      tile('Rounds tracked', fmt(all.length), '', `over ${pl(days.length, 'day')}`),
+      tile('Performance rate', possible ? fmt(100 * all.length / possible, 0) + '%' : '—', '', possible ? `${fmt(all.length)} of ${fmt(possible)} possible rounds (${members.length} players × ${pl(days.length, 'day')})` : 'no days yet')
+    ].join('');
   }
 
   function metric(label, value, sub, gold, isName) {

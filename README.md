@@ -11,7 +11,7 @@ A live scoreboard for my friends' daily [GeoSports](https://geosports.app) games
 **Overview tab**
 - Record Book (the executive summary): best season average, highest round, most days won, longest streak, most rounds played
 - Hall of Famers and You're Benched!: the season's best and worst single rounds
-- Season totals for the whole group
+- Season Totals: overall leader and lowest average, group average, 7-day leader, rounds tracked, and performance rate (rounds played out of every possible player-day)
 - Leaderboard for today, this week, this month and the season, ranked by average like GeoSports does, with a 7-day trend line per player
 - Daily scores chart with player and date-range filters, days-won and current-form charts, and a full daily results table
 
