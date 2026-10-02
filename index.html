@@ -252,7 +252,7 @@
 (function () {
   'use strict';
   const PALETTE = ['#c98a00', '#1f4fd1', '#d42a3c', '#138a4b', '#7c3aed', '#ea580c', '#db2777', '#0e9488'];
-  const S = { meta: null, days: [], tab: 'overview', period: 'week', players: new Set(), range: '30', focus: null, open: { bests: true, hof: true, bench: true } };
+  const S = { meta: null, days: [], tab: 'overview', period: 'week', players: new Set(), range: '30', focus: null, open: { bests: true, hof: true, bench: true, results: false } };
   const charts = {};
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -431,10 +431,12 @@
       <hr class="exec-rule">
       <h2 class="section-title">Appendix</h2>
       <p class="section-sub">The detail behind the numbers above.</p>
-      <section class="card">
-        <h3>Daily results</h3>
-        <p class="sub">Every tracked day, newest first. The day’s top score is highlighted.</p>
-        <div class="scroll-table">${resultsTable(M)}</div>
+      <section class="card collapsible${S.open.results ? '' : ' collapsed'}" data-col="results">
+        <button type="button" class="card-toggle" aria-expanded="${S.open.results}">Daily results</button>
+        <div class="card-body">
+          <p class="sub">Every tracked day, newest first. The day’s top score is highlighted.</p>
+          <div class="scroll-table">${resultsTable(M)}</div>
+        </div>
       </section>`;
   }
 
@@ -544,8 +546,14 @@
       options: baseOpts({ indexAxis: 'y', plugins: { legend: { display: false }, tooltip: baseOpts().plugins.tooltip } }) });
 
     const avgs = shown.filter((p) => p.alltime?.games > 0).sort((a, b) => b.alltime.avg - a.alltime.avg);
-    charts.avg = new Chart($('c-avg'), { type: 'bar', data: { labels: avgs.map((p) => `${p.name}  ${fmt(p.alltime.avg)}`), datasets: [{ data: avgs.map((p) => Math.round(p.alltime.avg)), backgroundColor: avgs.map((p) => p.color + 'b3'), borderColor: avgs.map((p) => p.color), borderWidth: 1 }] },
-      options: baseOpts({ indexAxis: 'y', scales: { x: { min: 0, max: 1000, grid: { color: 'rgba(14,31,63,0.08)' }, ticks: { precision: 0, stepSize: 200, color: '#5d6a82' } }, y: { grid: { display: false }, ticks: { color: '#0e1f3f', font: { family: "'Barlow Condensed', sans-serif", size: 13, weight: 700 } } } },
+    // Draws each bar's value just above it.
+    const valueLabels = { id: 'valueLabels', afterDatasetsDraw(chart) {
+      const { ctx } = chart; ctx.save(); ctx.fillStyle = '#0e1f3f'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+      ctx.font = "600 22px 'Teko', 'Barlow Condensed', sans-serif";
+      chart.getDatasetMeta(0).data.forEach((bar, i) => ctx.fillText(fmt(chart.data.datasets[0].data[i]), bar.x, bar.y - 4));
+      ctx.restore(); } };
+    charts.avg = new Chart($('c-avg'), { type: 'bar', plugins: [valueLabels], data: { labels: avgs.map((p) => p.name), datasets: [{ data: avgs.map((p) => Math.round(p.alltime.avg)), backgroundColor: avgs.map((p) => p.color + 'b3'), borderColor: avgs.map((p) => p.color), borderWidth: 1, maxBarThickness: 64 }] },
+      options: baseOpts({ layout: { padding: { top: 26 } }, scales: { y: { min: 0, max: 1000, grid: { color: 'rgba(14,31,63,0.08)' }, ticks: { precision: 0, stepSize: 200, color: '#5d6a82' } }, x: { grid: { display: false }, ticks: { color: '#0e1f3f', maxRotation: 0, autoSkip: false, font: { family: "'Barlow Condensed', sans-serif", size: 13, weight: 700 }, callback: function (v) { const n = this.getLabelForValue(v); return n.length > 12 ? n.split(' ') : n; } } } },
         plugins: { legend: { display: false }, tooltip: { ...baseOpts().plugins.tooltip, callbacks: { title: (c) => avgs[c[0].dataIndex].name, label: (c) => `${fmt(avgs[c.dataIndex].alltime.avg)} avg · ${pl(avgs[c.dataIndex].alltime.games, 'round')}` } } } }) });
   }
 

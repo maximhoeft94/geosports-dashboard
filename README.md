@@ -15,7 +15,7 @@ A live scoreboard for my friends' daily [GeoSports](https://geosports.app) games
 - Leaderboard for today, this week, this month and the season, ranked by average like GeoSports does, with a 7-day trend line per player
 - Daily scores chart (500 to 1,000 scale, hover any dot for the date and score) with player and date-range filters
 - Days-won chart and an average-score chart ranked highest first
-- Appendix with the full daily results table
+- Appendix with the full daily results table (collapsed by default, click to open)
 
 **Player Analysis tab**
 - Stat cards for any player: season average, rounds, days won, win rate, streak, this week vs. the season, best and worst rounds
