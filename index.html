@@ -491,7 +491,7 @@
       const me = r.p.userId === M.me;
       return `<tr class="clickable${me ? ' me' : ''}" data-focus="${esc(r.p.userId)}" tabindex="0">
         <td class="rank">${r.v == null ? '—' : rank}</td>
-        <td><div class="player-cell"><span class="swatch" style="background:${r.p.color}"></span>${esc(r.p.name)}${rank === 1 && r.v != null ? ' <span class="crown">LEADER</span>' : ''}${me ? ' <span class="dim">(you)</span>' : ''}</div></td>
+        <td><div class="player-cell"><span class="swatch" style="background:${r.p.color}"></span>${esc(r.p.name)}${rank === 1 && r.v != null ? ' <span class="crown">LEADER</span>' : ''}</div></td>
         <td class="num">${r.v == null ? '<span class="dim">Not played</span>' : fmt(r.v)}</td>
         <td class="num">${fmt(r.g)}</td>
         <td class="num">${r.w == null ? '—' : fmt(r.w)}</td>
