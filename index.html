@@ -252,7 +252,7 @@
 (function () {
   'use strict';
   const PALETTE = ['#c98a00', '#1f4fd1', '#d42a3c', '#138a4b', '#7c3aed', '#ea580c', '#db2777', '#0e9488'];
-  const S = { meta: null, days: [], tab: 'overview', period: 'week', players: new Set(), range: '30', focus: null, open: { bests: true, hof: true, bench: true, results: false } };
+  const S = { meta: null, days: [], tab: 'overview', period: 'week', players: new Set(), range: '30', focus: null, open: { bests: false, hof: false, bench: false, results: false } };
   const charts = {};
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -365,10 +365,10 @@
 
     const firstFull = complete[0]?.date;
     // Hall of Famers / You're Benched!: best and worst single rounds. Each list takes at most half
-    // the season's rounds (max 5), so the same round never shows up on both lists.
+    // the season's rounds (max 3), so the same round never shows up on both lists.
     const rounds = [];
     M.days.forEach((d) => Object.entries(d.scores).forEach(([id, sc]) => { if (byId[id]) rounds.push({ id, score: sc, date: d.date }); }));
-    const nList = Math.min(5, Math.floor(rounds.length / 2));
+    const nList = Math.min(3, Math.floor(rounds.length / 2));
     const top = [...rounds].sort((a, b) => b.score - a.score || (a.date < b.date ? -1 : 1)).slice(0, nList);
     const bottom = [...rounds].sort((a, b) => a.score - b.score || (a.date < b.date ? -1 : 1)).slice(0, nList);
     const roundCards = (list) => list.map((r, i) => `<div class="item"><div class="lbl"><span class="place">${i + 1}</span>${i === 0 ? (list === top ? 'Best round' : 'Worst round') : ordinal(i + 1) + ' place'}</div><div class="val">${fmt(r.score)}</div><div class="who">${name(r.id)}</div><div class="s">${esc(fmtDate(r.date, { weekday: 'short', month: 'short', day: 'numeric' }))}</div></div>`).join('');
@@ -383,8 +383,8 @@
         <div class="card-body"><div class="item-grid">${bests.map(([l, v, w, s]) => `<div class="item"><div class="lbl">${l}</div><div class="val">${v}</div><div class="who">${esc(w)}</div><div class="s">${esc(s)}</div></div>`).join('')}</div></div>
       </section>
       <hr class="exec-rule">
-      ${listSection('hof', 'hof', 'Hall of Famers', top, `The season’s ${nList === 1 ? 'best single round' : nList + ' best single rounds'}.`)}
-      ${listSection('bench', 'bench', 'You’re Benched!', bottom, `The season’s ${nList === 1 ? 'worst single round' : nList + ' worst single rounds'}. Tied scores are listed by date, earliest first.`)}
+      ${listSection('hof', 'hof', 'Hall of Famers', top, `The ${nList === 1 ? 'best single round' : nList + ' best single rounds'} since the season started.`)}
+      ${listSection('bench', 'bench', 'You’re Benched!', bottom, `The ${nList === 1 ? 'worst single round' : nList + ' worst single rounds'} since the season started. Tied scores are listed by date, earliest first.`)}
 
       <h2 class="section-title">Season Totals</h2>
       <p class="section-sub">Calculated from every round since the season started on ${esc(fmtDate(M.m.start, { month: 'long', day: 'numeric' }))}. Not affected by filters.</p>
