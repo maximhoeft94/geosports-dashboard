@@ -600,7 +600,7 @@
       if (prey.h.margin > 0) notes.push(['good', 'Favorite matchup', `${You} top${isMe ? '' : 's'} ${esc(prey.o.name)} by ${fmt(prey.h.margin, 1)} pts on average on shared days (${prey.h.w}-${prey.h.l}${prey.h.t ? '-' + prey.h.t : ''}).`]);
     }
 
-    const chips = M.members.map((x) => `<button type="button" class="chip${x.userId === p.userId ? ' active' : ''}" data-focus="${esc(x.userId)}"><span class="dot" style="background:${x.color}"></span>${esc(x.name)}${x.userId === M.me ? ' (you)' : ''}</button>`).join('');
+    const chips = M.members.map((x) => `<button type="button" class="chip${x.userId === p.userId ? ' active' : ''}" data-focus="${esc(x.userId)}"><span class="dot" style="background:${x.color}"></span>${esc(x.name)}</button>`).join('');
     const h2hRows = M.members.filter((o) => o.userId !== p.userId).map((o) => {
       const h = h2h(M, p.userId, o.userId);
       const pill = !h.n ? '<span class="dim">no shared days</span>' : h.w > h.l ? `<span class="pill pill-w">${h.w}-${h.l}${h.t ? '-' + h.t : ''}</span>` : h.w < h.l ? `<span class="pill pill-l">${h.w}-${h.l}${h.t ? '-' + h.t : ''}</span>` : `<span class="pill pill-t">${h.w}-${h.l}${h.t ? '-' + h.t : ''}</span>`;
