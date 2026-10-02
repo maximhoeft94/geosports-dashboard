@@ -181,6 +181,9 @@
   .dim { color: var(--faint); }
   .spark { display: block; }
 
+  .q-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .qtile .of { font-size: 20px; color: var(--faint); }
+  @media (max-width: 720px) { .q-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   .notes { display: grid; gap: 8px; }
   .note { padding: 10px 14px; background: var(--panel-alt); border: 1px solid var(--line); border-left: 4px solid var(--faint); border-radius: 8px; }
   .note.good { border-left-color: var(--win); } .note.bad { border-left-color: var(--red); } .note.info { border-left-color: var(--royal); }
@@ -244,7 +247,7 @@
       <p>Loading standings, daily scores and head-to-head records from the group’s Google Sheet…</p>
     </div>
   </div>
-  <footer class="foot">Scores from <a href="https://geosports.app" target="_blank" rel="noopener">GeoSports</a> · data in the <a href="https://docs.google.com/spreadsheets/d/14_UcW_n_3UEfPEcJvCrGHoerbHL54HZuETPOhZUvBZ4/edit" target="_blank" rel="noopener">group’s Google Sheet</a></footer>
+  <footer class="foot">Scores from <a href="https://geosports.app" target="_blank" rel="noopener">GeoSports</a> · data in the <a href="https://docs.google.com/spreadsheets/d/14_UcW_n_3UEfPEcJvCrGHoerbHL54HZuETPOhZUvBZ4/edit" target="_blank" rel="noopener">group’s Google Sheet</a> · <a href="share.html">share your question scores</a></footer>
 </main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -252,7 +255,7 @@
 (function () {
   'use strict';
   const PALETTE = ['#c98a00', '#1f4fd1', '#d42a3c', '#138a4b', '#7c3aed', '#ea580c', '#db2777', '#0e9488'];
-  const S = { meta: null, days: [], tab: 'overview', period: 'week', players: new Set(), range: '30', focus: null, open: { bests: false, hof: false, bench: false, results: false } };
+  const S = { meta: null, days: [], q: [], tab: 'overview', period: 'week', players: new Set(), range: '30', focus: null, open: { bests: false, hof: false, bench: false, results: false } };
   const charts = {};
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -637,6 +640,8 @@
         <div class="notes">${notes.map(([k, b, t]) => `<div class="note ${k}"><b>${b}</b><span>${t}</span></div>`).join('')}</div>
       </section>
 
+      ${questionHTML(M, p)}
+
       <section class="card">
         <h3>Score trend</h3>
         <p class="sub">Each tracked round, a 5-round rolling average, and the group’s daily average.</p>
@@ -672,9 +677,69 @@
 
     const bands = [['Under 600', 0, 600], ['600s', 600, 700], ['700s', 700, 800], ['800s', 800, 900], ['900+', 900, 99999]];
     const counts = bands.map(([, a, b]) => ser.filter((x) => x.score >= a && x.score < b).length);
+    questionChart(M, p);
     charts.dist = new Chart($('c-dist'), { type: 'bar', data: { labels: bands.map((b) => b[0]), datasets: [{ data: counts, backgroundColor: p.color + 'a6', borderColor: p.color, borderWidth: 1 }] },
       options: baseOpts({ plugins: { legend: { display: false }, tooltip: { ...baseOpts().plugins.tooltip, callbacks: { label: (c) => c.raw + ' rounds' } } } }) });
   }
+
+
+  // ---------- Question breakdown (Player Analysis) ----------
+  function qStats(rows) {
+    const out = [];
+    for (let i = 1; i <= 5; i++) {
+      const r = rows.filter((x) => x.q === i);
+      if (!r.length) { out.push(null); continue; }
+      const mult = r[0].mult, max = 100 * mult;
+      const avgPts = mean(r.map((x) => x.pts));
+      out.push({ q: i, n: r.length, mult, max, avgPts, pct: 100 * avgPts / max, avgBase: mean(r.map((x) => x.base)), medMiles: [...r.map((x) => x.miles)].sort((a, b) => a - b)[Math.floor((r.length - 1) / 2)] });
+    }
+    return out;
+  }
+  function questionHTML(M, p) {
+    const mine = S.q.filter((x) => x.uid === p.userId);
+    const sharers = new Set(S.q.map((x) => x.uid));
+    const who = esc(p.name) + '’s';
+    if (!mine.length) {
+      return `<section class="card"><h3>Question breakdown</h3>
+        <p class="sub" style="margin:0">${esc(p.name)} hasn’t shared question scores yet. GeoSports only shows each player their own questions, so they need to run the one-click share tool once in a while: <a href="share.html">${SHARE_LABEL}</a>.</p>
+        <p class="sub" style="margin:8px 0 0">${sharers.size} of ${M.members.length} players have shared so far.</p></section>`;
+    }
+    const st = qStats(mine), grp = qStats(S.q);
+    const days = new Set(mine.map((x) => x.date)).size;
+    const best = [...mine].sort((a, b) => a.miles - b.miles)[0], worst = [...mine].sort((a, b) => b.miles - a.miles)[0];
+    const strong = st.filter(Boolean).sort((a, b) => b.pct - a.pct)[0], weak = st.filter(Boolean).sort((a, b) => a.pct - b.pct)[0];
+    const tile = (s) => s ? `<div class="item qtile"><div class="lbl">Question ${s.q} · ×${s.mult}</div><div class="val">${fmt(s.avgPts)}<span class="of"> / ${fmt(s.max)}</span></div>
+        <div class="s">${fmt(s.pct)}% of max · base ${fmt(s.avgBase)}/100 · typical miss ${fmt(s.medMiles)} mi</div></div>` : '';
+    const recent = [...new Set(mine.map((x) => x.date))].sort().reverse().slice(0, 10).map((d) => {
+      const r = mine.filter((x) => x.date === d).sort((a, b) => a.q - b.q);
+      return `<tr><td>${esc(fmtDate(d, { weekday: 'short', month: 'short', day: 'numeric' }))}</td>${r.map((x) => `<td class="num" title="${esc(x.loc)} · ${fmt(x.miles, 1)} mi off">${fmt(x.pts)}</td>`).join('')}<td class="num"><b>${fmt(r.reduce((t, x) => t + x.pts, 0))}</b></td></tr>`;
+    }).join('');
+    return `<section class="card">
+        <h3>Question breakdown</h3>
+        <p class="sub">${who} average points on each of the day’s five questions, from ${pl(days, 'shared round')}. Later questions carry bigger multipliers, so a perfect day is 1,000.</p>
+        <div class="item-grid q-grid">${st.map(tile).join('')}</div>
+        <div class="notes" style="margin-top:12px">
+          <div class="note good"><b>Strongest question</b><span>Question ${strong.q}: ${fmt(strong.pct)}% of the max on average.</span></div>
+          <div class="note bad"><b>Weakest question</b><span>Question ${weak.q}: ${fmt(weak.pct)}% of the max on average.</span></div>
+          <div class="note info"><b>Closest guess</b><span>${esc(best.loc)}, ${fmt(best.miles, 1)} miles off (${esc(fmtDate(best.date))}, Q${best.q}).</span></div>
+          <div class="note"><b>Biggest miss</b><span>${esc(worst.loc)}, ${fmt(worst.miles, 1)} miles off (${esc(fmtDate(worst.date))}, Q${worst.q}).</span></div>
+        </div>
+        <div class="chart-wrap" style="height:260px;margin-top:12px"><canvas id="c-q" role="img" aria-label="Average share of max points per question, player vs group"></canvas></div>
+        <p class="sub" style="margin:10px 0 6px">Group bars average everyone who has shared (${sharers.size} of ${M.members.length} players).</p>
+        <div class="scroll-table flat"><table><thead><tr><th>Date</th><th class="num">Q1</th><th class="num">Q2</th><th class="num">Q3</th><th class="num">Q4</th><th class="num">Q5</th><th class="num">Total</th></tr></thead><tbody>${recent}</tbody></table></div>
+      </section>`;
+  }
+  function questionChart(M, p) {
+    const el = $('c-q'); if (!el || !window.Chart) return;
+    const st = qStats(S.q.filter((x) => x.uid === p.userId)), grp = qStats(S.q);
+    charts.q = new Chart(el, { type: 'bar', data: { labels: [1, 2, 3, 4, 5].map((i) => 'Q' + i + (st[i - 1] ? ' ×' + st[i - 1].mult : '')), datasets: [
+        { label: p.name, data: st.map((s) => s ? Math.round(s.pct) : null), backgroundColor: p.color + 'b3', borderColor: p.color, borderWidth: 1, maxBarThickness: 48 },
+        { label: 'Group', data: grp.map((s) => s ? Math.round(s.pct) : null), backgroundColor: 'rgba(14,31,63,0.18)', borderColor: '#13306b', borderWidth: 1, maxBarThickness: 48 }] },
+      options: baseOpts({ scales: { y: { min: 0, max: 100, grid: { color: 'rgba(14,31,63,0.08)' }, ticks: { precision: 0, stepSize: 20, color: '#5d6a82', callback: (v) => v + '%' } }, x: { grid: { display: false }, ticks: { color: '#0e1f3f', font: { family: "'Barlow Condensed', sans-serif", size: 14, weight: 700 } } } },
+        plugins: { ...baseOpts().plugins, tooltip: { ...baseOpts().plugins.tooltip, callbacks: { label: (c) => ` ${c.dataset.label}: ${c.raw}% of max` } } } }) });
+  }
+  const SHARE_LABEL = 'share page';
+  const isMeId = (M, p) => p.userId === M.me;
 
   // ---------- Events ----------
   document.addEventListener('click', (e) => {
@@ -746,7 +811,7 @@
   }
 
   async function loadSheet() {
-    const [players, info, daily] = await Promise.all([fetchTab('Players'), fetchTab('Info'), fetchTab('Daily Scores')]);
+    const [players, info, daily, qrows] = await Promise.all([fetchTab('Players'), fetchTab('Info'), fetchTab('Daily Scores'), fetchTab('Question Scores').catch(() => [])]);
     const I = Object.fromEntries(info.map((r) => [r.Field, r.Value]));
     const start = I['Tracking starts'] || '2026-10-02';
     const roster = players.filter((p) => p['User ID']).map((p) => ({ userId: p['User ID'], name: p.Player, role: p.Role, memberSince: p['Member since'] }));
@@ -765,6 +830,12 @@
       members, today: members.filter((m) => m.todayScore != null).map((m) => ({ userId: m.userId, score: m.todayScore }))
     };
     S.days = days;
+    // One row per player per question. Rows only count when that day's question points add up to the official daily score.
+    const official = {}; days.forEach((d) => { official[d.date] = d.scores; });
+    const q = qrows.filter((r) => /^\d{4}-\d{2}-\d{2}$/.test(r.Date) && r.Date >= start && r['User ID']).map((r) => ({
+      date: r.Date, uid: r['User ID'], q: num(r.Question), loc: r.Location, miles: num(r['Miles off']), base: num(r['Base score']), mult: num(r.Multiplier), pts: num(r.Points), src: r.Source }));
+    const byDay = {}; q.forEach((x) => { const k = x.uid + '|' + x.date; (byDay[k] = byDay[k] || []).push(x); });
+    S.q = Object.entries(byDay).filter(([k, xs]) => { const [uid, date] = k.split('|'); return xs.length === 5 && official[date] && official[date][uid] === xs.reduce((t, x) => t + x.pts, 0); }).flatMap(([, xs]) => xs);
   }
 
   function showError(msg) {
