@@ -13,7 +13,9 @@ A live scoreboard for my friends' daily [GeoSports](https://geosports.app) games
 - Hall of Famers and You're Benched!: the season's best and worst single rounds
 - Season Totals: overall leader and lowest average, group average, 7-day leader, rounds tracked, and performance rate (rounds played out of every possible player-day)
 - Leaderboard for today, this week, this month and the season, ranked by average like GeoSports does, with a 7-day trend line per player
-- Daily scores chart with player and date-range filters, days-won and current-form charts, and a full daily results table
+- Daily scores chart (500 to 1,000 scale, hover any dot for the date and score) with player and date-range filters
+- Days-won chart and an average-score chart ranked highest first
+- Appendix with the full daily results table
 
 **Player Analysis tab**
 - Stat cards for any player: season average, rounds, days won, win rate, streak, this week vs. the season, best and worst rounds

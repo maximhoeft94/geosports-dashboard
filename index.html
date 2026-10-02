@@ -411,7 +411,7 @@
 
       <section class="card">
         <h3>Daily scores</h3>
-        <p class="sub">One line per player. Gaps are days a player skipped.</p>
+        <p class="sub">One line per player on the 500 to 1,000 scale. Gaps are days a player skipped. Hover a dot for the date and score.</p>
         <div class="chart-wrap" style="height:360px"><canvas id="c-daily" role="img" aria-label="Daily scores by player"></canvas></div>
       </section>
 
@@ -422,12 +422,15 @@
           <div class="chart-wrap" style="height:280px"><canvas id="c-wins" role="img" aria-label="Days won per player"></canvas></div>
         </section>
         <section class="card">
-          <h3>Current form</h3>
-          <p class="sub">Last 7 days average minus season average. Right of zero is running hot. Rounds played in brackets.</p>
-          <div class="chart-wrap" style="height:280px"><canvas id="c-form" role="img" aria-label="Recent form versus season average"></canvas></div>
+          <h3>Average score</h3>
+          <p class="sub">Season average per player, highest first.</p>
+          <div class="chart-wrap" style="height:280px"><canvas id="c-avg" role="img" aria-label="Season average score per player, highest first"></canvas></div>
         </section>
       </div>
 
+      <hr class="exec-rule">
+      <h2 class="section-title">Appendix</h2>
+      <p class="section-sub">The detail behind the numbers above.</p>
       <section class="card">
         <h3>Daily results</h3>
         <p class="sub">Every tracked day, newest first. The day’s top score is highlighted.</p>
@@ -528,17 +531,22 @@
     if (S.range !== 'all') { const cut = addDays(M.asOf, -Number(S.range)); dates = dates.filter((d) => d > cut); }
     const lookup = Object.fromEntries(M.days.map((d) => [d.date, d.scores || {}]));
     const ds = shown.map((p) => ({ label: p.name, data: dates.map((d) => lookup[d][p.userId] ?? null), borderColor: p.color, backgroundColor: p.color,
-      borderWidth: p.userId === M.me ? 2.6 : 1.8, pointRadius: dates.length > 40 ? 0 : 3, pointHoverRadius: 5, tension: 0.25, spanGaps: false }));
+      borderWidth: p.userId === M.me ? 2.6 : 1.8, pointRadius: dates.length > 40 ? 2 : 3.5, pointHoverRadius: 7, pointHitRadius: 10, tension: 0, spanGaps: false }));
     charts.daily = new Chart($('c-daily'), { type: 'line', data: { labels: dates.map((d) => fmtDate(d)), datasets: ds },
-      options: baseOpts({ interaction: { mode: 'index', intersect: false }, scales: { x: { grid: { color: 'rgba(14,31,63,0.05)' }, ticks: { color: '#5d6a82', maxRotation: 0, autoSkip: true, maxTicksLimit: 10 } }, y: { grid: { color: 'rgba(14,31,63,0.08)' }, ticks: { color: '#5d6a82' } } } }) });
+      options: baseOpts({ interaction: { mode: 'nearest', intersect: true },
+        scales: { x: { grid: { color: 'rgba(14,31,63,0.05)' }, ticks: { color: '#5d6a82', maxRotation: 0, autoSkip: true, maxTicksLimit: 10 } },
+                  y: { min: 500, max: 1000, grid: { color: 'rgba(14,31,63,0.08)' }, ticks: { stepSize: 100, precision: 0, color: '#5d6a82' } } },
+        plugins: { ...baseOpts().plugins, tooltip: { ...baseOpts().plugins.tooltip, displayColors: true,
+          callbacks: { title: (c) => fmtDate(dates[c[0].dataIndex], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }), label: (c) => ` ${c.dataset.label}: ${fmt(c.raw)}` } } } }) });
 
     const wins = [...shown].sort((a, b) => (b.alltime?.won || 0) - (a.alltime?.won || 0));
     charts.wins = new Chart($('c-wins'), { type: 'bar', data: { labels: wins.map((p) => p.name), datasets: [{ data: wins.map((p) => p.alltime?.won || 0), backgroundColor: wins.map((p) => p.color + 'b3'), borderColor: wins.map((p) => p.color), borderWidth: 1 }] },
       options: baseOpts({ indexAxis: 'y', plugins: { legend: { display: false }, tooltip: baseOpts().plugins.tooltip } }) });
 
-    const form = shown.map((p) => { const r = M.recent(p.userId, 7); return { p, n: r.length, d: r.length && p.alltime?.avg != null ? Math.round(mean(r) - p.alltime.avg) : null }; }).filter((x) => x.d != null).sort((a, b) => b.d - a.d);
-    charts.form = new Chart($('c-form'), { type: 'bar', data: { labels: form.map((x) => `${x.p.name} (${x.n})`), datasets: [{ data: form.map((x) => x.d), backgroundColor: form.map((x) => x.d >= 0 ? 'rgba(19,138,75,0.75)' : 'rgba(200,40,58,0.75)'), borderColor: form.map((x) => x.d >= 0 ? '#138a4b' : '#c8283a'), borderWidth: 1 }] },
-      options: baseOpts({ indexAxis: 'y', plugins: { legend: { display: false }, tooltip: { ...baseOpts().plugins.tooltip, callbacks: { label: (c) => sign(c.raw) + ' pts vs season' } } } }) });
+    const avgs = shown.filter((p) => p.alltime?.games > 0).sort((a, b) => b.alltime.avg - a.alltime.avg);
+    charts.avg = new Chart($('c-avg'), { type: 'bar', data: { labels: avgs.map((p) => `${p.name}  ${fmt(p.alltime.avg)}`), datasets: [{ data: avgs.map((p) => Math.round(p.alltime.avg)), backgroundColor: avgs.map((p) => p.color + 'b3'), borderColor: avgs.map((p) => p.color), borderWidth: 1 }] },
+      options: baseOpts({ indexAxis: 'y', scales: { x: { min: 0, max: 1000, grid: { color: 'rgba(14,31,63,0.08)' }, ticks: { precision: 0, stepSize: 200, color: '#5d6a82' } }, y: { grid: { display: false }, ticks: { color: '#0e1f3f', font: { family: "'Barlow Condensed', sans-serif", size: 13, weight: 700 } } } },
+        plugins: { legend: { display: false }, tooltip: { ...baseOpts().plugins.tooltip, callbacks: { title: (c) => avgs[c[0].dataIndex].name, label: (c) => `${fmt(avgs[c.dataIndex].alltime.avg)} avg · ${pl(avgs[c.dataIndex].alltime.games, 'round')}` } } } }) });
   }
 
   // ---------- Player analysis ----------
