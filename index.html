@@ -68,6 +68,8 @@
   header h1 .accent { color: var(--red); }
   header .subtitle { display: block; font-family: var(--font-cond); font-size: 14px; font-weight: 700; letter-spacing: 2.5px; color: var(--muted); margin-top: 6px; text-transform: uppercase; }
   header .meta { display: flex; align-items: center; gap: 12px; font-family: var(--font-cond); font-size: 16px; font-weight: 600; letter-spacing: 1px; color: var(--ink-2); text-transform: uppercase; }
+  .updated { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px 10px; margin: 18px 0 4px; padding: 8px 14px; background: var(--navy); color: #fff; border-radius: 10px; font-family: var(--font-cond); font-size: 17px; font-weight: 600; letter-spacing: 0.5px; text-align: center; }
+  .updated .u-lbl { color: var(--gold); text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700; }
   header .meta #meta-line::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--win); margin-right: 8px; vertical-align: 1px; box-shadow: 0 0 0 3px rgba(19,138,75,0.18); }
 
   .btn { border: 0; cursor: pointer; background: var(--red); color: #fff; font-family: var(--font-cond); font-size: 15px; font-weight: 700; letter-spacing: 1.5px;
@@ -236,6 +238,7 @@
 </header>
 
 <main>
+  <div class="updated" id="updated" role="status"><span class="u-lbl">Last updated</span><span id="updated-at">—</span></div>
   <nav class="tab-bar" role="tablist">
     <button class="tab-btn active" type="button" role="tab" id="tab-overview" data-tab="overview" aria-selected="true">Overview</button>
     <button class="tab-btn" type="button" role="tab" id="tab-player" data-tab="player" aria-selected="false">Player Analysis</button>
@@ -300,14 +303,21 @@
     if (!S.focus || !M.byId[S.focus]) S.focus = M.byId[M.me] ? M.me : M.members[0]?.userId;
     $('title').innerHTML = esc(M.m.group?.name || 'GeoSports') + ' <span class="accent">Scoreboard</span>';
     $('subtitle').textContent = 'GeoSports group ' + (M.m.group?.code || '') + ' · daily results';
-    const synced = M.m.fetchedAt ? new Date(M.m.fetchedAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—';
-    $('meta-line').textContent = pl(M.complete.length, 'day') + ' tracked · synced ' + synced;
+    $('meta-line').textContent = pl(M.complete.length, 'day') + ' tracked';
+    setUpdated();
     Object.values(charts).forEach((c) => c.destroy()); for (const k in charts) delete charts[k];
     $('app').innerHTML = S.tab === 'overview' ? overviewHTML(M) : playerHTML(M);
     if (S.tab === 'overview') overviewCharts(M); else playerCharts(M);
   }
 
+  // Exact time of the last sheet refresh, to the minute, in the viewer's own time zone.
+  function setUpdated() {
+    const t = S.meta && S.meta.fetchedAt ? new Date(S.meta.fetchedAt) : null;
+    $('updated-at').textContent = t && !isNaN(t) ? t.toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }) : 'not yet';
+  }
+
   function renderWaiting() {
+    setUpdated();
     const m = S.meta, start = m.start || '2026-10-02';
     $('meta-line').textContent = 'Season starts ' + fmtDate(start, { weekday: 'short', month: 'short', day: 'numeric' });
     $('app').innerHTML = `<div class="card empty-state"><h2>Season starts ${esc(fmtDate(start, { weekday: 'long', month: 'long', day: 'numeric' }))}</h2>
