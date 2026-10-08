@@ -186,6 +186,17 @@
   .q-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
   .qtile .of { font-size: 20px; color: var(--faint); }
   @media (max-width: 720px) { .q-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .q-search { width: 100%; box-sizing: border-box; padding: 10px 14px; border: 1px solid var(--line-strong); border-radius: 999px; font: inherit; color: var(--ink); background: #fff; }
+  .q-search:focus { outline: 2px solid var(--navy); outline-offset: 1px; }
+  .qday-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+  .qday-head h3 { margin: 0; }
+  .qday-no { font-family: var(--font-cond); font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--faint); font-size: 14px; white-space: nowrap; }
+  .qlist { list-style: none; margin: 0; padding: 0; }
+  .qrow { display: grid; grid-template-columns: 74px 1fr; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+  .qrow:first-child { border-top: 0; padding-top: 2px; }
+  .qnum { font-family: var(--font-cond); font-weight: 700; font-size: 18px; color: var(--navy); letter-spacing: .5px; }
+  .qnum b { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 6px; background: var(--field); color: var(--red); font-size: 14px; }
+  .qtext { color: var(--ink); }
   .notes { display: grid; gap: 8px; }
   .note { padding: 10px 14px; background: var(--panel-alt); border: 1px solid var(--line); border-left: 4px solid var(--faint); border-radius: 8px; }
   .note.good { border-left-color: var(--win); } .note.bad { border-left-color: var(--red); } .note.info { border-left-color: var(--royal); }
@@ -207,8 +218,8 @@
     header h1 { font-size: 20px; }
     header .subtitle { font-size: 12px; letter-spacing: 1.5px; }
     header .meta { width: 100%; justify-content: space-between; font-size: 14px; }
-    .tab-bar { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
-    .tab-btn { font-size: 15px; padding: 8px 6px; }
+    .tab-bar { display: grid; grid-template-columns: 1fr 1.35fr 1fr; width: 100%; box-sizing: border-box; }
+    .tab-btn { font-size: 14px; letter-spacing: .5px; padding: 8px 4px; white-space: nowrap; }
     .card { padding: 14px 12px; }
     .row2 { grid-template-columns: minmax(0,1fr); }
     .metric-grid, .metric-grid.four { grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; }
@@ -242,6 +253,7 @@
   <nav class="tab-bar" role="tablist">
     <button class="tab-btn active" type="button" role="tab" id="tab-overview" data-tab="overview" aria-selected="true">Overview</button>
     <button class="tab-btn" type="button" role="tab" id="tab-player" data-tab="player" aria-selected="false">Player Analysis</button>
+    <button class="tab-btn" type="button" role="tab" id="tab-questions" data-tab="questions" aria-selected="false">Questions</button>
   </nav>
 
   <div id="app">
@@ -258,7 +270,7 @@
 (function () {
   'use strict';
   const PALETTE = ['#c98a00', '#1f4fd1', '#d42a3c', '#138a4b', '#7c3aed', '#ea580c', '#db2777', '#0e9488'];
-  const S = { meta: null, days: [], q: [], tab: 'overview', period: 'week', players: new Set(), range: '30', focus: null, open: { bests: false, hof: false, bench: false, results: false } };
+  const S = { meta: null, days: [], q: [], questions: [], tab: 'overview', period: 'week', players: new Set(), range: '30', focus: null, open: { bests: false, hof: false, bench: false, results: false } };
   const charts = {};
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -272,7 +284,7 @@
   const mean = (a) => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
   const sd = (a) => { if (a.length < 2) return null; const m = mean(a); return Math.sqrt(a.reduce((s, x) => s + (x - m) ** 2, 0) / (a.length - 1)); };
 
-  try { const t = localStorage.getItem('gs-tab'); if (t === 'player') S.tab = 'player'; } catch (e) {}
+  try { const t = localStorage.getItem('gs-tab'); if (t === 'player' || t === 'questions') S.tab = t; } catch (e) {}
 
   // ---------- Model ----------
   function model() {
@@ -306,6 +318,7 @@
     $('meta-line').textContent = pl(M.complete.length, 'day') + ' tracked';
     setUpdated();
     Object.values(charts).forEach((c) => c.destroy()); for (const k in charts) delete charts[k];
+    if (S.tab === 'questions') { $('app').innerHTML = questionsTabHTML(); return; }
     $('app').innerHTML = S.tab === 'overview' ? overviewHTML(M) : playerHTML(M);
     if (S.tab === 'overview') overviewCharts(M); else playerCharts(M);
   }
@@ -748,6 +761,36 @@
   const SHARE_LABEL = 'share page';
   const isMeId = (M, p) => p.userId === M.me;
 
+  // ---------- Questions tab ----------
+  function questionsTabHTML() {
+    const byDate = {}; S.questions.forEach((x) => { (byDate[x.date] = byDate[x.date] || []).push(x); });
+    const dates = Object.keys(byDate).sort().reverse();
+    if (!dates.length) return '<div class="card empty-state"><h2>No questions yet</h2><p>Questions appear here after the next refresh.</p></div>';
+    const start = S.meta.start;
+    const dayNo = (d) => Math.round((new Date(d + 'T12:00:00') - new Date(start + 'T12:00:00')) / 864e5) + 1;
+    const days = dates.map((d) => `<section class="card qday" data-date="${esc(d)}">
+        <div class="qday-head"><h3>${esc(fmtDate(d, { weekday: 'long', month: 'long', day: 'numeric' }))}</h3><span class="qday-no">Day ${dayNo(d)}</span></div>
+        <ol class="qlist">${byDate[d].sort((a, b) => a.q - b.q).map((x) => `<li class="qrow"><span class="qnum">Q${fmt(x.q)}<b>×${fmt(x.mult)}</b></span><span class="qtext">${esc(x.text)}</span></li>`).join('')}</ol>
+      </section>`).join('');
+    return `<section class="card">
+        <h3>Questions</h3>
+        <p class="sub">Every daily question since the season started on ${esc(fmtDate(start, { month: 'long', day: 'numeric' }))}: ${pl(S.questions.length, 'question')} over ${pl(dates.length, 'day')}, newest first. Prompts only, no answers.</p>
+        <input type="search" id="q-search" class="q-search" placeholder="Search questions (player, team, city…)" aria-label="Search questions" autocomplete="off">
+        <p class="sub" id="q-count" style="margin:8px 0 0"></p>
+      </section>
+      <div id="q-days">${days}</div>`;
+  }
+  document.addEventListener('input', (e) => {
+    if (e.target.id !== 'q-search') return;
+    const term = e.target.value.trim().toLowerCase(); let n = 0;
+    document.querySelectorAll('#q-days .qday').forEach((day) => {
+      let any = false;
+      day.querySelectorAll('.qrow').forEach((li) => { const hit = !term || li.textContent.toLowerCase().includes(term); li.hidden = !hit; if (hit) { any = true; n++; } });
+      day.hidden = !any;
+    });
+    $('q-count').textContent = term ? (n ? fmt(n) + (n === 1 ? ' match' : ' matches') : 'No matches') : '';
+  });
+
   // ---------- Events ----------
   document.addEventListener('click', (e) => {
     const t = e.target.closest('[data-tab],[data-period],[data-range],[data-player],[data-focus],[data-col] > .card-toggle');
@@ -818,7 +861,7 @@
   }
 
   async function loadSheet() {
-    const [players, info, daily, qrows] = await Promise.all([fetchTab('Players'), fetchTab('Info'), fetchTab('Daily Scores'), fetchTab('Question Scores').catch(() => [])]);
+    const [players, info, daily, qrows, qtext] = await Promise.all([fetchTab('Players'), fetchTab('Info'), fetchTab('Daily Scores'), fetchTab('Question Scores').catch(() => []), fetchTab('Questions').catch(() => [])]);
     const I = Object.fromEntries(info.map((r) => [r.Field, r.Value]));
     const start = I['Tracking starts'] || '2026-10-02';
     // Players marked "left" in the Status column are dropped from every stat, chart and table.
@@ -838,6 +881,8 @@
       members, today: members.filter((m) => m.todayScore != null).map((m) => ({ userId: m.userId, score: m.todayScore }))
     };
     S.days = days;
+    // Every daily question prompt since the season started (prompts only, no answers).
+    S.questions = qtext.filter((r) => /^\d{4}-\d{2}-\d{2}$/.test(r.Date) && r.Date >= start && r.Prompt).map((r) => ({ date: r.Date, q: num(r.Question), mult: num(r.Multiplier), text: r.Prompt }));
     // One row per player per question. Rows only count when that day's question points add up to the official daily score.
     const official = {}; days.forEach((d) => { official[d.date] = d.scores; });
     const q = qrows.filter((r) => /^\d{4}-\d{2}-\d{2}$/.test(r.Date) && r.Date >= start && r['User ID']).map((r) => ({
