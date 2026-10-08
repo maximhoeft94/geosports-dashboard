@@ -821,7 +821,8 @@
     const [players, info, daily, qrows] = await Promise.all([fetchTab('Players'), fetchTab('Info'), fetchTab('Daily Scores'), fetchTab('Question Scores').catch(() => [])]);
     const I = Object.fromEntries(info.map((r) => [r.Field, r.Value]));
     const start = I['Tracking starts'] || '2026-10-02';
-    const roster = players.filter((p) => p['User ID']).map((p) => ({ userId: p['User ID'], name: p.Player, role: p.Role, memberSince: p['Member since'] }));
+    // Players marked "left" in the Status column are dropped from every stat, chart and table.
+    const roster = players.filter((p) => p['User ID'] && String(p.Status || '').trim().toLowerCase() !== 'left').map((p) => ({ userId: p['User ID'], name: p.Player, role: p.Role, memberSince: p['Member since'] }));
     const idByName = Object.fromEntries(roster.map((m) => [m.name, m.userId]));
     const days = daily.filter((r) => /^\d{4}-\d{2}-\d{2}$/.test(r.Date) && r.Date >= start).map((r) => {
       const scores = {};
