@@ -184,7 +184,10 @@
   .spark { display: block; }
 
   .q-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-  .qtile .of { font-size: 20px; color: var(--faint); }
+  .qtile .of, .metric-value .of { font-size: 20px; color: var(--faint); }
+  .miles-grid .metric-value { white-space: nowrap; }
+  @media (max-width: 720px) { .miles-grid .metric-value { font-size: 30px; } .miles-grid .metric-value .of { font-size: 16px; } }
+  .tile-miles { box-shadow: inset 0 3px 0 var(--red), var(--shadow); }
   @media (max-width: 720px) { .q-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   .q-search { width: 100%; box-sizing: border-box; padding: 10px 14px; border: 1px solid var(--line-strong); border-radius: 999px; font: inherit; color: var(--ink); background: #fff; }
   .q-search:focus { outline: 2px solid var(--navy); outline-offset: 1px; }
@@ -745,6 +748,7 @@
         <h3>Average score per question</h3>
         <p class="sub">${who} average points on each of the day’s five questions, from ${pl(days, 'shared round')}. Later questions carry bigger multipliers, so a perfect day is 1,000.</p>
         <div class="item-grid q-grid">${st.map(tile).join('')}</div>
+        ${milesHTML(M, p, mine, days)}
         <div class="notes" style="margin-top:12px">
           <div class="note good"><b>Strongest question</b><span>Question ${strong.q}: ${fmt(strong.pct)}% of the max on average.</span></div>
           <div class="note bad"><b>Weakest question</b><span>Question ${weak.q}: ${fmt(weak.pct)}% of the max on average.</span></div>
@@ -753,6 +757,23 @@
         <p class="sub" style="margin:10px 0 6px">Group bars average everyone who has shared (${sharers.size} of ${M.members.length} players).</p>
         <div class="scroll-table flat"><table><thead><tr><th>Date</th><th class="num">Q1</th><th class="num">Q2</th><th class="num">Q3</th><th class="num">Q4</th><th class="num">Q5</th><th class="num">Total</th></tr></thead><tbody>${recent}</tbody></table></div>
       </section>`;
+  }
+  // Miles missed: how far off each guess was, summed over every shared round.
+  function milesHTML(M, p, mine, days) {
+    const total = mine.reduce((t, x) => t + (x.miles || 0), 0);
+    const perRound = total / days;
+    const sharers = [...new Set(S.q.map((x) => x.uid))].map((uid) => {
+      const r = S.q.filter((x) => x.uid === uid); const n = new Set(r.map((x) => x.date)).size;
+      return { uid, per: r.reduce((t, x) => t + (x.miles || 0), 0) / n };
+    }).sort((a, b) => a.per - b.per);
+    const rank = sharers.findIndex((x) => x.uid === p.userId) + 1;
+    const mi = (v) => fmt(v, 0) + '<span class="of"> mi</span>';
+    return `<div class="metric-grid four miles-grid" style="margin:12px 0 0">
+        <div class="metric-card tile-miles"><p class="metric-label">Total miles missed</p><p class="metric-value">${mi(total)}</p><p class="metric-sub">across ${fmt(mine.length)} ${mine.length === 1 ? 'guess' : 'guesses'} in ${pl(days, 'round')}</p></div>
+        <div class="metric-card"><p class="metric-label">Miles missed per round</p><p class="metric-value">${mi(perRound)}</p><p class="metric-sub">all 5 guesses added up</p></div>
+        <div class="metric-card"><p class="metric-label">Avg miss per guess</p><p class="metric-value">${mi(total / mine.length)}</p><p class="metric-sub">median ${fmt([...mine.map((x) => x.miles)].sort((a, b) => a - b)[Math.floor((mine.length - 1) / 2)], 0)} mi</p></div>
+        <div class="metric-card"><p class="metric-label">Accuracy rank</p><p class="metric-value">#${rank}<span class="of"> of ${sharers.length}</span></p><p class="metric-sub">fewest miles per round among players who shared</p></div>
+      </div>`;
   }
   function questionChart(M, p) {
     const el = $('c-q'); if (!el || !window.Chart) return;
