@@ -188,8 +188,13 @@
   @media (max-width: 720px) { .q-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   .q-search { width: 100%; box-sizing: border-box; padding: 10px 14px; border: 1px solid var(--line-strong); border-radius: 999px; font: inherit; color: var(--ink); background: #fff; }
   .q-search:focus { outline: 2px solid var(--navy); outline-offset: 1px; }
-  .qday-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
-  .qday-head h3 { margin: 0; }
+  .qday-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; cursor: pointer; list-style: none; }
+  .qday-head::-webkit-details-marker { display: none; }
+  .qday-head h3 { margin: 0; flex: 1; }
+  .qday-head::after { content: '▾'; font-size: 16px; color: var(--faint); transition: transform .15s ease; }
+  .qday:not([open]) > .qday-head::after { transform: rotate(-90deg); }
+  .qday[open] > .qday-head { margin-bottom: 10px; }
+  .qday:not([open]) { padding-top: 14px; padding-bottom: 14px; }
   .qday-no { font-family: var(--font-cond); font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--faint); font-size: 14px; white-space: nowrap; }
   .qlist { list-style: none; margin: 0; padding: 0; }
   .qrow { display: grid; grid-template-columns: 74px 1fr; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
@@ -768,10 +773,12 @@
     if (!dates.length) return '<div class="card empty-state"><h2>No questions yet</h2><p>Questions appear here after the next refresh.</p></div>';
     const start = S.meta.start;
     const dayNo = (d) => Math.round((new Date(d + 'T12:00:00') - new Date(start + 'T12:00:00')) / 864e5) + 1;
-    const days = dates.map((d) => `<section class="card qday" data-date="${esc(d)}">
-        <div class="qday-head"><h3>${esc(fmtDate(d, { weekday: 'long', month: 'long', day: 'numeric' }))}</h3><span class="qday-no">Day ${dayNo(d)}</span></div>
+    // Only the current (newest) day starts open; every earlier day is collapsed.
+    const nowD = new Date(), todayISO = nowD.getFullYear() + '-' + String(nowD.getMonth() + 1).padStart(2, '0') + '-' + String(nowD.getDate()).padStart(2, '0');
+    const days = dates.map((d, i) => `<details class="card qday" data-date="${esc(d)}"${i === 0 ? ' open data-current' : ''}>
+        <summary class="qday-head"><h3>${esc(fmtDate(d, { weekday: 'long', month: 'long', day: 'numeric' }))}</h3><span class="qday-no">${i === 0 ? (d === todayISO ? 'Today · ' : 'Latest · ') : ''}Day ${dayNo(d)}</span></summary>
         <ol class="qlist">${byDate[d].sort((a, b) => a.q - b.q).map((x) => `<li class="qrow"><span class="qnum">Q${fmt(x.q)}<b>×${fmt(x.mult)}</b></span><span class="qtext">${esc(x.text)}</span></li>`).join('')}</ol>
-      </section>`).join('');
+      </details>`).join('');
     return `<section class="card">
         <h3>Questions</h3>
         <p class="sub">Every daily question since the season started on ${esc(fmtDate(start, { month: 'long', day: 'numeric' }))}: ${pl(S.questions.length, 'question')} over ${pl(dates.length, 'day')}, newest first. Prompts only, no answers.</p>
@@ -787,6 +794,8 @@
       let any = false;
       day.querySelectorAll('.qrow').forEach((li) => { const hit = !term || li.textContent.toLowerCase().includes(term); li.hidden = !hit; if (hit) { any = true; n++; } });
       day.hidden = !any;
+      // While searching, open every day with a match; clearing the search goes back to only the current day open.
+      day.open = term ? any : day.hasAttribute('data-current');
     });
     $('q-count').textContent = term ? (n ? fmt(n) + (n === 1 ? ' match' : ' matches') : 'No matches') : '';
   });
