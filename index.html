@@ -487,7 +487,9 @@
     const r7 = members.map((p) => { const s = days.filter((d) => d.date >= from7 && d.date <= asOf && d.scores[p.userId] != null).map((d) => d.scores[p.userId]); return { p, n: s.length, avg: mean(s) }; }).filter((x) => x.n);
     const hi7 = r7.length ? Math.max(...r7.map((x) => x.avg)) : null;
     const lead7 = r7.filter((x) => x.avg === hi7);
-    const possible = members.length * days.length;
+    // Each player only counts from the day they joined the group, so new members aren't marked absent for days before they were in it.
+    const possible = members.reduce((t, p) => t + days.filter((d) => d.date >= (p.memberSince || '') || d.scores[p.userId] != null).length, 0);
+    const lateJoiners = members.filter((p) => p.memberSince && days.length && p.memberSince > days[0].date).length;
     const tile = (label, value, who, sub, cls) => `<div class="metric-card ${cls || ''}"><p class="metric-label">${label}</p><p class="metric-value">${value}</p>${who ? `<p class="metric-who">${who}</p>` : ''}<p class="metric-sub">${sub}</p></div>`;
     return [
       tile('Overall leader', fmt(hi), leaders.length ? names(leaders) : '—', leaders.length ? `season avg · ${leaders.length === 1 ? pl(leaders[0].alltime.games, 'round') : 'tied'}` : 'no rounds yet', 'tile-lead'),
@@ -495,7 +497,7 @@
       tile('Group average', fmt(mean(all)), '', `per round, all ${pl(all.length, 'round')}`),
       tile('7-day leader', fmt(hi7), lead7.length ? lead7.map((x) => esc(x.p.name)).join(' & ') : '—', lead7.length ? `avg over the last 7 days · ${lead7.length === 1 ? pl(lead7[0].n, 'round') : 'tied'}` : 'no rounds in the last 7 days'),
       tile('Rounds tracked', pl(days.length, 'day'), pl(all.length, 'game') + ' played', `days recorded since ${esc(fmtDate(M.m.start))}`),
-      tile('Performance rate', possible ? fmt(100 * all.length / possible, 0) + '%' : '—', '', possible ? `${fmt(all.length)} of ${fmt(possible)} possible rounds (${members.length} players × ${pl(days.length, 'day')})` : 'no days yet')
+      tile('Performance rate', possible ? fmt(100 * all.length / possible, 0) + '%' : '—', '', possible ? `${fmt(all.length)} of ${fmt(possible)} possible rounds (${members.length} players × ${pl(days.length, 'day')}${lateJoiners ? ', counted from each player’s join date' : ''})` : 'no days yet')
     ].join('');
   }
 
