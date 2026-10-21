@@ -13,7 +13,7 @@
 <title>FV Ball Knowers Scoreboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Graduate&family=Teko:wght@500;600&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Graduate&family=Teko:wght@500;600&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
 <style>
   /* Layout: home-jersey game program. White header with a navy/red sleeve stripe, varsity lettering for headings, scoreboard-style numerals, white panels on a light field-grey ground. Light mode only, by design. */
   :root {
@@ -216,11 +216,32 @@
   .lane-stat b { font-family: var(--font-num); font-size: 22px; color: var(--navy); line-height: 1; }
   .lane-stat span { font-size: 13px; color: var(--muted); }
   .lane-team { padding-top: 14px; border-top: 1px dashed var(--line-strong); }
+  .lane-track { display: flex; }
+  .lane-track.returning { justify-content: flex-end; }
+  .lane-track.returning .lane-fill { background-image: repeating-linear-gradient(-45deg, rgba(255,255,255,.28) 0 6px, transparent 6px 12px) !important; }
+  .lane-earth { position: absolute; left: -6px; top: 50%; width: 18px; height: 18px; transform: translateY(-50%); border-radius: 50%; background: radial-gradient(circle at 35% 35%, #5fb6ff, #2f7fd8 55%, #1b4fa0); box-shadow: 0 0 0 2px var(--panel); z-index: 1; }
+  .laps-wrap { display: grid; grid-template-columns: 260px 1fr; gap: 24px; align-items: center; }
+  .orbit { position: relative; width: 260px; height: 260px; border-radius: 14px; background: #0b1530; overflow: hidden; image-rendering: pixelated; }
+  .stars { position: absolute; inset: 0; background-image: radial-gradient(#fff 1px, transparent 1.5px), radial-gradient(#9fd3ff 1px, transparent 1.5px); background-size: 37px 41px, 53px 47px; background-position: 3px 7px, 21px 29px; opacity: .55; animation: twinkle 2.4s steps(2) infinite; }
+  .px-earth { position: absolute; left: 50%; top: 54%; transform: translate(-50%, -50%); }
+  .orbiter { position: absolute; left: 50%; top: 54%; width: 0; height: 0; animation: orbit 9s steps(36) infinite; }
+  .upright { position: absolute; left: 66px; top: -18px; animation: counter 9s steps(36) infinite; }
+  .tumble { animation: tumble 1.8s steps(8) infinite; transform-origin: 18px 18px; }
+  .bubble { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); width: 176px; height: 30px; }
+  .bubble span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 0 4px; background: #fff; color: #0b1530; border: 2px solid #0b1530; box-shadow: 2px 2px 0 #9fd3ff; font: 8px/1.3 'Press Start 2P', monospace; text-align: center; opacity: 0; animation: say 12s steps(1) infinite; }
+  @keyframes orbit { to { transform: rotate(360deg); } }
+  @keyframes counter { to { transform: rotate(-360deg); } }
+  @keyframes tumble { to { transform: rotate(360deg); } }
+  @keyframes twinkle { 50% { opacity: .25; } }
+  @keyframes say { 0% { opacity: 1; } 25% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .orbiter, .upright, .tumble, .stars, .bubble span { animation: none; } .bubble span:first-child { opacity: 1; } }
   .laps { display: grid; gap: 8px; }
   .lap { display: grid; grid-template-columns: 14px 1fr auto auto; align-items: baseline; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line); }
   .lap:last-child { border-bottom: 0; }
   .lap b { font-family: var(--font-num); font-size: 22px; color: var(--navy); }
   @media (max-width: 720px) {
+    .laps-wrap { grid-template-columns: 1fr; justify-items: center; }
+    .laps-wrap > div:last-child { width: 100%; }
     .lane { grid-template-columns: 1fr auto; gap: 6px 10px; }
     .lane-name { grid-column: 1 / -1; }
     .lane-track { grid-column: 1; }
@@ -407,7 +428,7 @@
     // bests
     const by = (f) => [...members].filter((p) => f(p) != null).sort((a, b) => f(b) - f(a))[0];
     const byQ = (f) => [...members].filter((p) => qualifies(p) && f(p) != null).sort((a, b) => f(b) - f(a))[0];
-    const bAvg = byQ((p) => p.alltime?.avg), bWon = by((p) => p.alltime?.won), bStreak = by((p) => p.currentStreak), bGames = by((p) => p.alltime?.games), bWeek = byQ((p) => p.week?.avg);
+    const bAvg = byQ((p) => p.alltime?.avg), bWon = by((p) => p.alltime?.won), bStreak = by((p) => p.currentStreak), bGames = by((p) => p.alltime?.games), bWeek = by((p) => p.week?.avg);
     let hi = null; complete.forEach((d) => d.entries.forEach(([id, sc]) => { if (!hi || sc > hi.score) hi = { date: d.date, score: sc, id }; }));
     const bests = [
       bAvg && ['Best season avg', fmt(bAvg.alltime.avg), bAvg.name, `over ${pl(bAvg.alltime.games, 'round')} · min ${MIN_ROUNDS} rounds`],
@@ -415,7 +436,7 @@
       bWon && ['Most days won', fmt(bWon.alltime.won), bWon.name, `${fmt(100 * bWon.alltime.won / bWon.alltime.games, 0)}% of rounds played`],
       bStreak && bStreak.currentStreak > 0 && ['Longest active streak', fmt(bStreak.currentStreak) + (bStreak.currentStreak === 1 ? ' day' : ' days'), bStreak.name, 'consecutive days played'],
       bGames && ['Most rounds played', fmt(bGames.alltime.games), bGames.name, `since ${fmtDate(M.m.start)}`],
-      bWeek && ['Best avg this week', fmt(bWeek.week.avg), bWeek.name, `${pl(bWeek.week.games, 'round')} · players with ${MIN_ROUNDS}+ season rounds`],
+      bWeek && ['Best avg this week', fmt(bWeek.week.avg), bWeek.name, pl(bWeek.week.games, 'round')],
     ].filter(Boolean);
 
     // oddities
@@ -475,7 +496,7 @@
 
       <section class="card">
         <div class="filter-label">Leaderboard</div>
-        <p class="sub">Week, month and season rank by average score, the same way GeoSports does, so a missed day doesn’t sink you. Players need ${MIN_ROUNDS} season rounds to be ranked. Click a player for their full breakdown.</p>
+        <p class="sub">Week, month and season rank by average score, the same way GeoSports does, so a missed day doesn’t sink you. Month and season rankings need ${MIN_ROUNDS} season rounds. Click a player for their full breakdown.</p>
         <div class="chips" style="margin-bottom:12px">${periodChip('today', 'Today')}${periodChip('week', 'This week')}${periodChip('month', 'This month')}${periodChip('alltime', 'Season')}</div>
         <div class="scroll-table flat">${leaderboardTable(M)}</div>
       </section>
@@ -508,9 +529,32 @@
   }
 
   // ---------- Space Race (Overview) ----------
-  // Every mile a guess missed by, added up per player, then measured against trips through space.
-  // Planet figures are each planet's closest approach to Earth.
-  const PLANETS = [['Venus', 23.6e6], ['Mars', 33.9e6], ['Mercury', 48e6], ['Jupiter', 365e6], ['Saturn', 746e6], ['Uranus', 1.6e9], ['Neptune', 2.7e9]];
+  // Every mile a guess missed by, added up per player, then measured as trips to the Moon and laps of the Earth.
+  // A trip runs Earth → Moon, then Moon → Earth, then out again, and so on.
+  function moonTrip(m) {
+    const leg = Math.floor(m / DIST.moon), into = (m - leg * DIST.moon) / DIST.moon;
+    return { leg, into, outbound: leg % 2 === 0, roundTrips: Math.floor(leg / 2) };
+  }
+  // Pixel art: one character per pixel, mapped to a colour. "." is transparent.
+  const PX = {
+    earth: ['.....dddddd.....', '...ddoooooodd...', '..doooggoooowod.', '.doogggggooowwd.', '.dooggggoooooood', 'doooggggoooggood', 'dooooggooogggggd', 'doooooggoogggood', 'dwwoooogoooggood', 'dooooooooooogood', '.dooggoooooooood', '.dooggggoowwood.', '..doogggooooood.', '...ddoooooodd...', '.....dddddd.....'],
+    nautL: ['....hhhh....', '...hwwwwh...', '..hwvvvvwh..', '..hwvlvvwh..', '..hwvvvvwh..', '...hwwwwh...', '.ggwwrwwwwgg', 'w.gwwwwwwg.w', 'w..wwwwww..w', '...ww..ww...', '...ww..ww...', '..kkk..kkk..'],
+  };
+  const PAL = { d: '#1b4fa0', o: '#2f7fd8', g: '#3fae5a', w: '#ffffff', h: '#8a95a8', v: '#13306b', l: '#9fd3ff', r: '#d42a3c', k: '#33415c' };
+  function pixelSVG(rows, size, cls) {
+    const w = Math.max(...rows.map((r) => r.length)), hgt = rows.length; let rects = '';
+    rows.forEach((row, y) => [...row].forEach((c, x) => { if (PAL[c]) rects += `<rect x="${x}" y="${y}" width="1" height="1" fill="${PAL[c]}"/>`; }));
+    return `<svg class="${cls}" viewBox="0 0 ${w} ${hgt}" width="${size * w}" height="${size * hgt}" shape-rendering="crispEdges" aria-hidden="true">${rects}</svg>`;
+  }
+  function orbitHTML() {
+    const lines = ['is this Ohio?', 'recalculating…', 'only 900 mi off', 'wrong planet?'];
+    return `<div class="orbit" role="img" aria-label="Pixel-art astronaut tumbling around a pixel-art Earth">
+        <div class="stars"></div>
+        ${pixelSVG(PX.earth, 6, 'px-earth')}
+        <div class="bubble">${lines.map((t, i) => `<span style="animation-delay:${i * 3}s">“${t}”</span>`).join('')}</div>
+        <div class="orbiter"><div class="upright"><div class="tumble">${pixelSVG(PX.nautL, 3, 'px-naut')}</div></div></div>
+      </div>`;
+  }
   function spaceRaceHTML(M) {
     const racers = M.members.map((p) => { const r = S.q.filter((x) => x.uid === p.userId); return { p, miles: r.reduce((t, x) => t + (x.miles || 0), 0), rounds: new Set(r.map((x) => x.date)).size }; })
       .filter((x) => x.rounds).sort((a, b) => b.miles - a.miles);
@@ -518,44 +562,39 @@
       <p class="section-sub">Every mile a guess has missed by, added up. How far would each player’s misses take them?</p>`;
     if (!racers.length) return intro + `<div class="card empty-state"><p>The race starts once players share their question scores on the <a href="share.html">share page</a>.</p></div>`;
     const team = racers.reduce((t, x) => t + x.miles, 0);
-    const pct = (v, d) => { const x = 100 * v / d; return x >= 10 ? fmt(x, 0) + '%' : x >= 0.1 ? fmt(x, 1) + '%' : x >= 0.001 ? fmt(x, 3) + '%' : '<0.001%'; };
-    // Past the Moon, the headline becomes "Landed" and the note tracks the trip home.
-    const moonBig = (m) => m >= DIST.moon ? 'Landed' : pct(m, DIST.moon);
-    const moonNote = (m) => m < DIST.moon ? `${fmt(DIST.moon - m)} mi to go` : m < 2 * DIST.moon ? `${pct(m - DIST.moon, DIST.moon)} of the way home` : `back home · ${fmt(Math.floor(m / (2 * DIST.moon)))} round trip${m >= 4 * DIST.moon ? 's' : ''}`;
-    const lane = (name, color, m, sub, isTeam) => `<div class="lane${isTeam ? ' lane-team' : ''}">
+    const pct = (x) => (x >= 10 ? fmt(x, 0) : fmt(x, 1)) + '%';
+    // Outbound legs fill from Earth (left); return legs fill from the Moon (right) back toward Earth.
+    const lane = (name, color, m, sub, isTeam) => {
+      const t = moonTrip(m), w = (100 * t.into).toFixed(2);
+      const big = t.outbound ? (t.leg ? `Trip ${t.roundTrips + 1}` : pct(100 * t.into)) : 'Landed';
+      const note = t.outbound
+        ? (t.leg ? `${pct(100 * t.into)} to the Moon again · ${pl(t.roundTrips, 'round trip')} done` : `${fmt(DIST.moon - m)} mi to go`)
+        : `heading home · ${pct(100 * t.into)} of the way back`;
+      return `<div class="lane${isTeam ? ' lane-team' : ''}">
         <div class="lane-name"><span class="dot" style="background:${color}"></span><b>${name}</b><span class="dim">${sub}</span></div>
-        <div class="lane-track"><div class="lane-fill" style="width:${Math.min(100, 100 * m / DIST.moon).toFixed(2)}%;background:${color}"></div><span class="lane-moon" aria-hidden="true"></span></div>
-        <div class="lane-stat"><b>${moonBig(m)}</b><span>${moonNote(m)}</span></div>
+        <div class="lane-track${t.outbound ? '' : ' returning'}"><span class="lane-earth" aria-hidden="true"></span><div class="lane-fill" style="width:${w}%;background:${color}"></div><span class="lane-moon" aria-hidden="true"></span></div>
+        <div class="lane-stat"><b>${big}</b><span>${note}</span></div>
       </div>`;
+    };
     const lanes = racers.map((x) => lane(esc(x.p.name), x.p.color, x.miles, `${fmt(x.miles)} mi · ${pl(x.rounds, 'round')}`)).join('')
       + (racers.length > 1 ? lane('Whole group', 'var(--navy)', team, `${fmt(team)} mi combined`, true) : '');
-    const lead = racers[0];
-    // Group pace: combined miles missed per day since the season started, used for each planet's arrival estimate.
-    const elapsed = Math.max(1, Math.round((toDate(M.asOf) - toDate(M.m.start)) / 864e5) + 1), perDay = team / elapsed;
-    const eta = (d) => { if (team >= d) return 'Arrived'; const days = (d - team) / perDay; return days < 365 ? pl(Math.ceil(days), 'day') : fmt(days / 365.25, days / 365.25 < 10 ? 1 : 0) + ' yrs'; };
     const laps = racers.map((x) => `<div class="lap"><span class="dot" style="background:${x.p.color}"></span><span class="lap-name">${esc(x.p.name)}</span><b>${fmt(x.miles / DIST.earth, 1)}</b><span class="dim">laps</span></div>`).join('');
-    // Saved for the chart, which is drawn after the HTML is in place.
-    S.planets = PLANETS.map(([n, d]) => ({ name: n, dist: d, lead: 100 * lead.miles / d, team: 100 * team / d, years: team >= d ? 0 : (d - team) / perDay / 365.25 }));
-    S.planetsLead = lead.p.name; S.planetsPerDay = perDay;
     return intro + `<section class="card space">
         <h3>Race to the Moon</h3>
-        <p class="sub">The Moon is ${fmt(DIST.moon)} miles away. More miles missed means further along.</p>
+        <p class="sub">The Moon is ${fmt(DIST.moon)} miles away. More miles missed means further along. Once someone lands, their bar turns around and tracks the trip back to Earth.</p>
         <div class="lanes">${lanes}</div>
       </section>
-      <div class="row2">
-        <section class="card space">
-          <h3>Laps around the Earth</h3>
-          <p class="sub">One lap is ${fmt(DIST.earth)} miles at the equator.</p>
-          <div class="laps">${laps}</div>
-          ${racers.length > 1 ? `<p class="sub" style="margin:12px 0 0">Together the group has missed its way around the planet <b>${fmt(team / DIST.earth, 1)}</b> times.</p>` : ''}
-        </section>
-        <section class="card space">
-          <h3>On to the planets</h3>
-          <p class="sub">Each planet at its closest approach to Earth. ${esc(lead.p.name)} leads the race.</p>
-          <div class="chart-wrap" style="height:330px"><canvas id="c-planets" role="img" aria-label="Years until the group's combined miles missed reach each planet"></canvas></div>
-          <p class="sub" style="margin:10px 0 0">Bars show how many years until the group’s combined misses reach each planet, at the current pace of ${fmt(perDay)} miles a day. Each gridline is 10× further. Hover a bar for the distance and how far along everyone is.</p>
-        </section>
-      </div>`;
+      <section class="card space">
+        <h3>Laps around the Earth</h3>
+        <p class="sub">One lap is ${fmt(DIST.earth)} miles at the equator.</p>
+        <div class="laps-wrap">
+          ${orbitHTML()}
+          <div>
+            <div class="laps">${laps}</div>
+            ${racers.length > 1 ? `<p class="sub" style="margin:12px 0 0">Together the group has missed its way around the planet <b>${fmt(team / DIST.earth, 1)}</b> times.</p>` : ''}
+          </div>
+        </div>
+      </section>`;
   }
 
   // Season Totals: six tiles, all calculated from tracked rounds since the season start.
@@ -568,7 +607,7 @@
     const leaders = played.filter((p) => p.alltime.avg === hi), trailers = played.filter((p) => p.alltime.avg === lo);
     const all = []; days.forEach((d) => Object.entries(d.scores).forEach(([id, sc]) => { if (M.byId[id]) all.push(sc); }));
     const from7 = addDays(asOf, -6);
-    const r7 = members.filter(qualifies).map((p) => { const s = days.filter((d) => d.date >= from7 && d.date <= asOf && d.scores[p.userId] != null).map((d) => d.scores[p.userId]); return { p, n: s.length, avg: mean(s) }; }).filter((x) => x.n);
+    const r7 = members.map((p) => { const s = days.filter((d) => d.date >= from7 && d.date <= asOf && d.scores[p.userId] != null).map((d) => d.scores[p.userId]); return { p, n: s.length, avg: mean(s) }; }).filter((x) => x.n);
     const hi7 = r7.length ? Math.max(...r7.map((x) => x.avg)) : null;
     const lead7 = r7.filter((x) => x.avg === hi7);
     // Each player only counts from the day they joined the group, so new members aren't marked absent for days before they were in it.
@@ -579,7 +618,7 @@
       tile('Overall leader', fmt(hi), leaders.length ? names(leaders) : '—', leaders.length ? `season avg · ${leaders.length === 1 ? pl(leaders[0].alltime.games, 'round') : 'tied'} · min ${MIN_ROUNDS} rounds` : `no one has ${MIN_ROUNDS} rounds yet`, 'tile-lead'),
       tile('Needs to step it up', fmt(lo), played.length > 1 ? names(trailers) : '—', played.length > 1 ? `lowest season avg · ${trailers.length === 1 ? pl(trailers[0].alltime.games, 'round') : 'tied'} · min ${MIN_ROUNDS} rounds` : `needs 2+ players with ${MIN_ROUNDS} rounds`, 'tile-low'),
       tile('Group average', fmt(mean(all)), '', `per round, all ${pl(all.length, 'round')}`),
-      tile('7-day leader', fmt(hi7), lead7.length ? lead7.map((x) => esc(x.p.name)).join(' & ') : '—', lead7.length ? `avg over the last 7 days · ${lead7.length === 1 ? pl(lead7[0].n, 'round') : 'tied'} · ${MIN_ROUNDS}+ season rounds` : 'no qualified rounds in the last 7 days'),
+      tile('7-day leader', fmt(hi7), lead7.length ? lead7.map((x) => esc(x.p.name)).join(' & ') : '—', lead7.length ? `avg over the last 7 days · ${lead7.length === 1 ? pl(lead7[0].n, 'round') : 'tied'}` : 'no rounds in the last 7 days'),
       tile('Rounds tracked', pl(days.length, 'day'), pl(all.length, 'game') + ' played', `days recorded since ${esc(fmtDate(M.m.start))}`),
       tile('Performance rate', possible ? fmt(100 * all.length / possible, 0) + '%' : '—', '', possible ? `${fmt(all.length)} of ${fmt(possible)} possible rounds (${members.length} players × ${pl(days.length, 'day')}${lateJoiners ? ', counted from each player’s join date' : ''})` : 'no days yet')
     ].join('');
@@ -605,7 +644,9 @@
       rows = M.members.map((p) => ({ p, v: t[p.userId] ?? null, g: t[p.userId] != null ? 1 : 0, w: null }));
     } else rows = M.members.map((p) => ({ p, v: p[S.period]?.avg ?? null, g: p[S.period]?.games || 0, w: p[S.period]?.won ?? 0 }));
     // Only players with MIN_ROUNDS season rounds are ranked; everyone else is listed underneath as provisional.
-    rows.forEach((r) => { r.q = qualifies(r.p); });
+    // The minimum only applies to month and season; today and this week rank everyone who played.
+    const needMin = S.period === 'month' || S.period === 'alltime';
+    rows.forEach((r) => { r.q = !needMin || qualifies(r.p); });
     rows.sort((a, b) => (b.q - a.q) || ((b.v ?? -1) - (a.v ?? -1)));
     let rank = 0, prev = null;
     const firstProv = rows.findIndex((r) => !r.q);
@@ -667,30 +708,6 @@
     charts.avg = new Chart($('c-avg'), { type: 'bar', plugins: [valueLabels], data: { labels: avgs.map((p) => p.name), datasets: [{ data: avgs.map((p) => Math.round(p.alltime.avg)), backgroundColor: avgs.map((p) => p.color + 'b3'), borderColor: avgs.map((p) => p.color), borderWidth: 1, maxBarThickness: 64 }] },
       options: baseOpts({ layout: { padding: { top: 26 } }, scales: { y: { min: 0, max: 1000, grid: { color: 'rgba(14,31,63,0.08)' }, ticks: { precision: 0, stepSize: 200, color: '#5d6a82' } }, x: { grid: { display: false }, ticks: { color: '#0e1f3f', maxRotation: 0, autoSkip: false, font: { family: "'Barlow Condensed', sans-serif", size: 13, weight: 700 }, callback: function (v) { const n = this.getLabelForValue(v); return n.length > 12 ? n.split(' ') : n; } } } },
         plugins: { legend: { display: false }, tooltip: { ...baseOpts().plugins.tooltip, callbacks: { title: (c) => avgs[c[0].dataIndex].name, label: (c) => `${fmt(avgs[c.dataIndex].alltime.avg)} avg · ${pl(avgs[c.dataIndex].alltime.games, 'round')}` } } } }) });
-    planetsChart();
-  }
-
-  function planetsChart() {
-    const el = $('c-planets'); if (!el || !window.Chart || !S.planets) return;
-    const P = S.planets, yrs = (v) => v === 0 ? 'Arrived' : v < 1 ? pl(Math.ceil(v * 365.25), 'day') : fmt(v, v < 10 ? 1 : 0) + ' yrs';
-    const miles = (d) => d >= 1e9 ? fmt(d / 1e9, 1) + ' billion mi' : fmt(d / 1e6, 1) + ' million mi';
-    const pc = (x) => x >= 10 ? fmt(x, 0) + '%' : x >= 0.1 ? fmt(x, 1) + '%' : fmt(x, 3) + '%';
-    // Writes each bar's ETA just past its end.
-    const endLabels = { id: 'endLabels', afterDatasetsDraw(chart) {
-      const { ctx } = chart; ctx.save(); ctx.fillStyle = '#0e1f3f'; ctx.textBaseline = 'middle'; ctx.font = "600 15px 'Barlow Condensed', sans-serif";
-      chart.getDatasetMeta(0).data.forEach((bar, i) => { const t = yrs(P[i].years); const w = ctx.measureText(t).width; const inside = bar.x + w + 8 > chart.chartArea.right;
-        ctx.fillStyle = inside ? '#fff' : '#0e1f3f'; ctx.textAlign = inside ? 'right' : 'left'; ctx.fillText(t, inside ? bar.x - 6 : bar.x + 6, bar.y); });
-      ctx.restore(); } };
-    const colors = ['#c9a227', '#d42a3c', '#8a8f99', '#c46b2a', '#b8932f', '#3aa3b5', '#2f5fd0'];
-    charts.planets = new Chart(el, { type: 'bar', plugins: [endLabels],
-      data: { labels: P.map((x) => x.name), datasets: [{ data: P.map((x) => Math.max(x.years, 0.05)), backgroundColor: colors.map((c) => c + 'cc'), borderColor: colors, borderWidth: 1, maxBarThickness: 30 }] },
-      options: baseOpts({ indexAxis: 'y', layout: { padding: { right: 62 } },
-        scales: { x: { type: 'logarithmic', min: 1, max: 10 ** Math.ceil(Math.log10(Math.max(...P.map((x) => x.years), 10))), grid: { color: (c) => [1, 10, 100, 1000, 10000].includes(c.tick?.value) ? 'rgba(14,31,63,0.12)' : 'transparent' },
-                       ticks: { color: '#5d6a82', maxRotation: 0, autoSkip: false, callback: (v) => [1, 10, 100, 1000, 10000].includes(v) ? fmt(v) + (v === 1 ? ' yr' : ' yrs') : '' } },
-                  y: { grid: { display: false }, ticks: { color: '#0e1f3f', font: { family: "'Barlow Condensed', sans-serif", size: 15, weight: 700 } } } },
-        plugins: { legend: { display: false }, tooltip: { ...baseOpts().plugins.tooltip, callbacks: {
-          title: (c) => P[c[0].dataIndex].name + ' · ' + miles(P[c[0].dataIndex].dist),
-          label: (c) => { const x = P[c.dataIndex]; return [` Group: ${pc(x.team)} of the way`, ` ${S.planetsLead}: ${pc(x.lead)} of the way`, ` ETA: ${yrs(x.years)}`]; } } } } }) });
   }
 
   // ---------- Player analysis ----------
