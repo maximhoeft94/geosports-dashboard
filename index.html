@@ -187,6 +187,20 @@
   .qtile .of, .metric-value .of { font-size: 20px; color: var(--faint); }
   .miles-grid .metric-value { white-space: nowrap; }
   @media (max-width: 720px) { .miles-grid .metric-value { font-size: 30px; } .miles-grid .metric-value .of { font-size: 16px; } }
+  .fun-miles { margin-top: 12px; padding: 16px 18px; border: 1px solid var(--line); border-radius: 10px; background: linear-gradient(180deg, #f4f7fc, var(--panel)); }
+  .fun-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-bottom: 12px; }
+  .fun-head b { font-family: var(--font-cond); font-size: 18px; letter-spacing: 1px; text-transform: uppercase; color: var(--navy); }
+  .fun-head span { color: var(--muted); font-size: 15px; }
+  .moon-row { display: flex; justify-content: space-between; font-family: var(--font-cond); font-weight: 700; font-size: 14px; letter-spacing: 1px; text-transform: uppercase; color: var(--ink-2); margin-bottom: 6px; }
+  .moon-track { height: 14px; border-radius: 999px; background: #e3e8f1; overflow: hidden; }
+  .moon-fill { height: 100%; min-width: 6px; border-radius: 999px; background: linear-gradient(90deg, var(--navy), var(--red)); }
+  .moon-note { margin: 8px 0 14px; font-weight: 600; color: var(--ink); }
+  .fun-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .fun-fact { padding: 12px 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+  .fun-big { font-family: var(--font-num); font-size: 30px; font-weight: 600; color: var(--navy); line-height: 1; font-variant-numeric: tabular-nums; }
+  .fun-lbl { margin-top: 4px; font-weight: 600; color: var(--ink); }
+  .fun-note { font-size: 13px; color: var(--faint); }
+  @media (max-width: 720px) { .fun-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .fun-big { font-size: 24px; } }
   .tile-miles { box-shadow: inset 0 3px 0 var(--red), var(--shadow); }
   @media (max-width: 720px) { .q-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   .q-search { width: 100%; box-sizing: border-box; padding: 10px 14px; border: 1px solid var(--line-strong); border-radius: 999px; font: inherit; color: var(--ink); background: #fff; }
@@ -775,6 +789,33 @@
         <div class="metric-card"><p class="metric-label">Miles missed per round</p><p class="metric-value">${mi(perRound)}</p><p class="metric-sub">all 5 guesses added up</p></div>
         <div class="metric-card"><p class="metric-label">Avg miss per guess</p><p class="metric-value">${mi(total / mine.length)}</p><p class="metric-sub">median ${fmt([...mine.map((x) => x.miles)].sort((a, b) => a - b)[Math.floor((mine.length - 1) / 2)], 0)} mi</p></div>
         <div class="metric-card"><p class="metric-label">Accuracy rank</p><p class="metric-value">#${rank}<span class="of"> of ${sharers.length}</span></p><p class="metric-sub">fewest miles per round among players who shared</p></div>
+      </div>
+      ${funMilesHTML(total)}`;
+  }
+  // Total miles missed, put into real-world distances.
+  const DIST = { earth: 24901, moon: 238855, nycLa: 2451, iss: 250, wall: 13171, marathon: 26.2, field: 1 / 17.6 };
+  function funMilesHTML(total) {
+    const x = (v, d = 0) => fmt(v, d);
+    const moonPct = 100 * total / DIST.moon;
+    const moonLine = total >= DIST.moon
+      ? `Landed on the Moon${total >= 2 * DIST.moon ? ` and made it back to Earth${total >= 4 * DIST.moon ? ` ${x(Math.floor(total / (2 * DIST.moon)))} times` : ''}` : `, and ${x(100 * (total - DIST.moon) / DIST.moon)}% of the way home`}.`
+      : `${x(moonPct, moonPct < 10 ? 1 : 0)}% of the way to the Moon. ${x(DIST.moon - total)} miles to go.`;
+    const fact = (big, label, note) => `<div class="fun-fact"><div class="fun-big">${big}</div><div class="fun-lbl">${label}</div><div class="fun-note">${note}</div></div>`;
+    return `<div class="fun-miles">
+        <div class="fun-head"><b>Miles missed, in perspective</b><span>${x(total)} miles of wrong guesses adds up to…</span></div>
+        <div class="moon">
+          <div class="moon-row"><span>Earth</span><span>Moon · ${x(DIST.moon)} mi</span></div>
+          <div class="moon-track"><div class="moon-fill" style="width:${Math.min(100, moonPct).toFixed(1)}%"></div></div>
+          <p class="moon-note">${moonLine}</p>
+        </div>
+        <div class="fun-grid">
+          ${fact(x(total / DIST.earth, 1) + '×', 'around the Earth', 'at the equator, 24,901 mi a lap')}
+          ${fact(x(total / DIST.nycLa, total / DIST.nycLa < 10 ? 1 : 0), 'flights from New York to LA', '2,451 mi each way')}
+          ${fact(x(total / DIST.wall, 1) + '×', 'the full Great Wall of China', 'all 13,171 mi of it')}
+          ${fact(x(total / DIST.iss), 'trips up to the Space Station', 'it orbits about 250 mi up')}
+          ${fact(x(total / DIST.marathon), 'marathons', '26.2 mi each')}
+          ${fact(x(total / DIST.field), 'football fields', 'end to end, 100 yards each')}
+        </div>
       </div>`;
   }
   function questionChart(M, p) {
