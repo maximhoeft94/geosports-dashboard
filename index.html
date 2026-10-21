@@ -201,6 +201,34 @@
   .fun-lbl { margin-top: 4px; font-weight: 600; color: var(--ink); }
   .fun-note { font-size: 13px; color: var(--faint); }
   @media (max-width: 720px) { .fun-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .fun-big { font-size: 24px; } }
+  .lanes { display: grid; gap: 14px; }
+  .lane { display: grid; grid-template-columns: minmax(150px, 220px) 1fr 140px; align-items: center; gap: 14px; }
+  .lane-name { display: flex; flex-direction: column; min-width: 0; }
+  .lane-name b { display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--ink); }
+  .lane-name .dot, .lap .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
+  .lane-name { position: relative; padding-left: 18px; }
+  .lane-name > .dot { position: absolute; left: 0; top: 6px; }
+  .lane-name .dim { font-size: 13px; }
+  .lane-track { position: relative; height: 16px; border-radius: 999px; background: #e3e8f1; }
+  .lane-fill { height: 100%; min-width: 8px; border-radius: 999px; }
+  .lane-moon { position: absolute; right: -6px; top: 50%; width: 22px; height: 22px; transform: translateY(-50%); border-radius: 50%; background: radial-gradient(circle at 35% 35%, #f5f2e6, #c9c3ad 70%); box-shadow: 0 0 0 2px var(--panel), 0 1px 4px rgba(14,31,63,.25); }
+  .lane-stat { display: flex; flex-direction: column; text-align: right; }
+  .lane-stat b { font-family: var(--font-num); font-size: 22px; color: var(--navy); line-height: 1; }
+  .lane-stat span { font-size: 13px; color: var(--muted); }
+  .lane-team { padding-top: 14px; border-top: 1px dashed var(--line-strong); }
+  .laps { display: grid; gap: 8px; }
+  .lap { display: grid; grid-template-columns: 14px 1fr auto auto; align-items: baseline; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .lap:last-child { border-bottom: 0; }
+  .lap b { font-family: var(--font-num); font-size: 22px; color: var(--navy); }
+  @media (max-width: 720px) {
+    .lane { grid-template-columns: 1fr auto; gap: 6px 10px; }
+    .lane-name { grid-column: 1 / -1; }
+    .lane-track { grid-column: 1; }
+    .lane-stat { grid-column: 2; min-width: 84px; }
+    .lane-track { margin-right: 14px; }
+    .space table th, .space table td { padding: 8px 5px; font-size: 13px; letter-spacing: 0; }
+    .space table th:first-child, .space table td:first-child { padding-left: 8px; }
+  }
   .tile-miles { box-shadow: inset 0 3px 0 var(--red), var(--shadow); }
   @media (max-width: 720px) { .q-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   .q-search { width: 100%; box-sizing: border-box; padding: 10px 14px; border: 1px solid var(--line-strong); border-radius: 999px; font: inherit; color: var(--ink); background: #fff; }
@@ -476,6 +504,8 @@
         </section>
       </div>
 
+      ${spaceRaceHTML(M)}
+
       <hr class="exec-rule">
       <h2 class="section-title">Appendix</h2>
       <p class="section-sub">The detail behind the numbers above.</p>
@@ -486,6 +516,53 @@
           <div class="scroll-table">${resultsTable(M)}</div>
         </div>
       </section>`;
+  }
+
+  // ---------- Space Race (Overview) ----------
+  // Every mile a guess missed by, added up per player, then measured against trips through space.
+  // Planet figures are each planet's closest approach to Earth.
+  const PLANETS = [['Venus', 23.6e6], ['Mars', 33.9e6], ['Mercury', 48e6], ['Jupiter', 365e6], ['Saturn', 746e6], ['Uranus', 1.6e9], ['Neptune', 2.7e9]];
+  function spaceRaceHTML(M) {
+    const racers = M.members.map((p) => { const r = S.q.filter((x) => x.uid === p.userId); return { p, miles: r.reduce((t, x) => t + (x.miles || 0), 0), rounds: new Set(r.map((x) => x.date)).size }; })
+      .filter((x) => x.rounds).sort((a, b) => b.miles - a.miles);
+    const intro = `<h2 class="section-title">Space Race</h2>
+      <p class="section-sub">Every mile a guess has missed by, added up. How far would each player’s misses take them?</p>`;
+    if (!racers.length) return intro + `<div class="card empty-state"><p>The race starts once players share their question scores on the <a href="share.html">share page</a>.</p></div>`;
+    const team = racers.reduce((t, x) => t + x.miles, 0);
+    const pct = (v, d) => { const x = 100 * v / d; return x >= 10 ? fmt(x, 0) + '%' : x >= 0.1 ? fmt(x, 1) + '%' : x >= 0.001 ? fmt(x, 3) + '%' : '<0.001%'; };
+    const moonNote = (m) => m >= DIST.moon ? `Landed${m >= 2 * DIST.moon ? ` · ${fmt(m / DIST.moon, 1)} Moon trips` : ''}` : `${fmt(DIST.moon - m)} mi to go`;
+    const lane = (name, color, m, sub, isTeam) => `<div class="lane${isTeam ? ' lane-team' : ''}">
+        <div class="lane-name"><span class="dot" style="background:${color}"></span><b>${name}</b><span class="dim">${sub}</span></div>
+        <div class="lane-track"><div class="lane-fill" style="width:${Math.min(100, 100 * m / DIST.moon).toFixed(2)}%;background:${color}"></div><span class="lane-moon" aria-hidden="true"></span></div>
+        <div class="lane-stat"><b>${pct(m, DIST.moon)}</b><span>${moonNote(m)}</span></div>
+      </div>`;
+    const lanes = racers.map((x) => lane(esc(x.p.name), x.p.color, x.miles, `${fmt(x.miles)} mi · ${pl(x.rounds, 'round')}`)).join('')
+      + (racers.length > 1 ? lane('Whole group', 'var(--navy)', team, `${fmt(team)} mi combined`, true) : '');
+    const lead = racers[0];
+    // Group pace: combined miles missed per day since the season started, used for each planet's arrival estimate.
+    const elapsed = Math.max(1, Math.round((toDate(M.asOf) - toDate(M.m.start)) / 864e5) + 1), perDay = team / elapsed;
+    const eta = (d) => { if (team >= d) return 'Arrived'; const days = (d - team) / perDay; return days < 365 ? pl(Math.ceil(days), 'day') : fmt(days / 365.25, days / 365.25 < 10 ? 1 : 0) + ' yrs'; };
+    const laps = racers.map((x) => `<div class="lap"><span class="dot" style="background:${x.p.color}"></span><span class="lap-name">${esc(x.p.name)}</span><b>${fmt(x.miles / DIST.earth, 1)}</b><span class="dim">laps</span></div>`).join('');
+    const planetRows = PLANETS.map(([n, d]) => `<tr><td><b>${n}</b></td><td class="num">${d >= 1e9 ? fmt(d / 1e9, 1) + 'B' : fmt(d / 1e6, 1) + 'M'} mi</td><td class="num">${pct(lead.miles, d)}</td><td class="num">${pct(team, d)}</td><td class="num">${eta(d)}</td></tr>`).join('');
+    return intro + `<section class="card space">
+        <h3>Race to the Moon</h3>
+        <p class="sub">The Moon is ${fmt(DIST.moon)} miles away. More miles missed means further along.</p>
+        <div class="lanes">${lanes}</div>
+      </section>
+      <div class="row2">
+        <section class="card space">
+          <h3>Laps around the Earth</h3>
+          <p class="sub">One lap is ${fmt(DIST.earth)} miles at the equator.</p>
+          <div class="laps">${laps}</div>
+          ${racers.length > 1 ? `<p class="sub" style="margin:12px 0 0">Together the group has missed its way around the planet <b>${fmt(team / DIST.earth, 1)}</b> times.</p>` : ''}
+        </section>
+        <section class="card space">
+          <h3>On to the planets</h3>
+          <p class="sub">Each planet at its closest approach to Earth (M = million, B = billion miles). ${esc(lead.p.name)} leads the race.</p>
+          <div class="scroll-table flat"><table><thead><tr><th>Planet</th><th class="num">Distance</th><th class="num">${esc(lead.p.name)}</th><th class="num">${racers.length > 1 ? 'Group' : 'Total'}</th><th class="num">ETA</th></tr></thead><tbody>${planetRows}</tbody></table></div>
+          <p class="sub" style="margin:10px 0 0">ETA is how long until the group’s combined misses reach each planet, at its current pace of ${fmt(perDay)} miles a day.</p>
+        </section>
+      </div>`;
   }
 
   // Season Totals: six tiles, all calculated from tracked rounds since the season start.
