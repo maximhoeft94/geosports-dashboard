@@ -202,7 +202,8 @@
   .fun-note { font-size: 13px; color: var(--faint); }
   @media (max-width: 720px) { .fun-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .fun-big { font-size: 24px; } }
   .lanes { display: grid; gap: 14px; }
-  .lane { display: grid; grid-template-columns: minmax(150px, 220px) 1fr 140px; align-items: center; gap: 14px; }
+  .lane { display: grid; grid-template-columns: minmax(150px, 220px) 1fr 180px; align-items: center; gap: 14px; }
+  .lane-eta { white-space: nowrap; }
   .lane-name { display: flex; flex-direction: column; min-width: 0; }
   .lane-name b { display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--ink); }
   .lane-name .dot, .lap .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
@@ -216,6 +217,8 @@
   .lane-stat b { font-family: var(--font-num); font-size: 22px; color: var(--navy); line-height: 1; }
   .lane-stat span { font-size: 13px; color: var(--muted); }
   .lane-team { padding-top: 14px; border-top: 1px dashed var(--line-strong); }
+  .lane-upd { font-size: 12px; color: var(--faint); }
+  .lane-stat .lane-eta { margin-top: 2px; font-family: var(--font-cond); font-weight: 700; font-size: 14px; letter-spacing: .5px; color: var(--red); text-transform: uppercase; }
   .lane-track { display: flex; }
   .lane-track.returning { justify-content: flex-end; }
   .lane-track.returning .lane-fill { background-image: repeating-linear-gradient(-45deg, rgba(255,255,255,.28) 0 6px, transparent 6px 12px) !important; }
@@ -556,32 +559,48 @@
       </div>`;
   }
   function spaceRaceHTML(M) {
-    const racers = M.members.map((p) => { const r = S.q.filter((x) => x.uid === p.userId); return { p, miles: r.reduce((t, x) => t + (x.miles || 0), 0), rounds: new Set(r.map((x) => x.date)).size }; })
-      .filter((x) => x.rounds).sort((a, b) => b.miles - a.miles);
+    // Each racer's data runs up to the last round in their latest share code (or the last refresh, for the owner).
+    // Pace = miles missed per calendar day from the season start (or their join date) to that last round.
+    const dayDiff = (a, b) => Math.round((toDate(b) - toDate(a)) / 864e5);
+    const racers = M.members.map((p) => {
+      const r = S.q.filter((x) => x.uid === p.userId); if (!r.length) return null;
+      const dates = [...new Set(r.map((x) => x.date))].sort(), last = dates[dates.length - 1];
+      const from = [M.m.start, p.memberSince || ''].sort().pop();
+      const miles = r.reduce((t, x) => t + (x.miles || 0), 0);
+      return { p, miles, rounds: dates.length, last, pace: miles / Math.max(1, dayDiff(from, last) + 1) };
+    }).filter(Boolean).sort((a, b) => b.miles - a.miles);
     const intro = `<h2 class="section-title">Space Race</h2>
       <p class="section-sub">Every mile a guess has missed by, added up. How far would each player’s misses take them?</p>`;
     if (!racers.length) return intro + `<div class="card empty-state"><p>The race starts once players share their question scores on the <a href="share.html">share page</a>.</p></div>`;
     const team = racers.reduce((t, x) => t + x.miles, 0);
+    const teamLast = racers.map((x) => x.last).sort().pop(), teamPace = racers.reduce((t, x) => t + x.pace, 0);
+    // Forecast: date the next stop (Moon, or Earth on the way back) is reached at the current pace.
+    const forecast = (m, pace, last) => {
+      const t = moonTrip(m); if (!pace) return '';
+      const stop = t.outbound ? (t.leg ? 'Moon again' : 'Moon') : 'Home';
+      const d = toDate(last); d.setDate(d.getDate() + Math.ceil((1 - t.into) * DIST.moon / pace));
+      return `${stop} by ${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', ...(d.getFullYear() !== toDate(last).getFullYear() ? { year: 'numeric' } : {}) })}`;
+    };
     const pct = (x) => (x >= 10 ? fmt(x, 0) : fmt(x, 1)) + '%';
     // Outbound legs fill from Earth (left); return legs fill from the Moon (right) back toward Earth.
-    const lane = (name, color, m, sub, isTeam) => {
+    const lane = (name, color, m, sub, isTeam, pace, last) => {
       const t = moonTrip(m), w = (100 * t.into).toFixed(2);
       const big = t.outbound ? (t.leg ? `Trip ${t.roundTrips + 1}` : pct(100 * t.into)) : 'Landed';
       const note = t.outbound
         ? (t.leg ? `${pct(100 * t.into)} to the Moon again · ${pl(t.roundTrips, 'round trip')} done` : `${fmt(DIST.moon - m)} mi to go`)
         : `heading home · ${pct(100 * t.into)} of the way back`;
       return `<div class="lane${isTeam ? ' lane-team' : ''}">
-        <div class="lane-name"><span class="dot" style="background:${color}"></span><b>${name}</b><span class="dim">${sub}</span></div>
+        <div class="lane-name"><span class="dot" style="background:${color}"></span><b>${name}</b><span class="dim">${sub}</span><span class="lane-upd">${isTeam ? 'latest data' : 'data through'} ${esc(fmtDate(last, { month: 'short', day: 'numeric' }))}</span></div>
         <div class="lane-track${t.outbound ? '' : ' returning'}"><span class="lane-earth" aria-hidden="true"></span><div class="lane-fill" style="width:${w}%;background:${color}"></div><span class="lane-moon" aria-hidden="true"></span></div>
-        <div class="lane-stat"><b>${big}</b><span>${note}</span></div>
+        <div class="lane-stat"><b>${big}</b><span>${note}</span>${pace ? `<span class="lane-eta">${forecast(m, pace, last)}</span>` : ''}</div>
       </div>`;
     };
-    const lanes = racers.map((x) => lane(esc(x.p.name), x.p.color, x.miles, `${fmt(x.miles)} mi · ${pl(x.rounds, 'round')}`)).join('')
-      + (racers.length > 1 ? lane('Whole group', 'var(--navy)', team, `${fmt(team)} mi combined`, true) : '');
+    const lanes = racers.map((x) => lane(esc(x.p.name), x.p.color, x.miles, `${fmt(x.miles)} mi · ${pl(x.rounds, 'round')}`, false, x.pace, x.last)).join('')
+      + (racers.length > 1 ? lane('Whole group', 'var(--navy)', team, `${fmt(team)} mi combined`, true, teamPace, teamLast) : '');
     const laps = racers.map((x) => `<div class="lap"><span class="dot" style="background:${x.p.color}"></span><span class="lap-name">${esc(x.p.name)}</span><b>${fmt(x.miles / DIST.earth, 1)}</b><span class="dim">laps</span></div>`).join('');
     return intro + `<section class="card space">
         <h3>Race to the Moon</h3>
-        <p class="sub">The Moon is ${fmt(DIST.moon)} miles away. More miles missed means further along. Once someone lands, their bar turns around and tracks the trip back to Earth.</p>
+        <p class="sub">The Moon is ${fmt(DIST.moon)} miles away. More miles missed means further along. Once someone lands, their bar turns around and tracks the trip back to Earth. Forecasts use each player’s pace so far, counted from the last round in their data.</p>
         <div class="lanes">${lanes}</div>
       </section>
       <section class="card space">
