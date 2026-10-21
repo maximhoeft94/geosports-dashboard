@@ -530,11 +530,13 @@
     if (!racers.length) return intro + `<div class="card empty-state"><p>The race starts once players share their question scores on the <a href="share.html">share page</a>.</p></div>`;
     const team = racers.reduce((t, x) => t + x.miles, 0);
     const pct = (v, d) => { const x = 100 * v / d; return x >= 10 ? fmt(x, 0) + '%' : x >= 0.1 ? fmt(x, 1) + '%' : x >= 0.001 ? fmt(x, 3) + '%' : '<0.001%'; };
-    const moonNote = (m) => m >= DIST.moon ? `Landed${m >= 2 * DIST.moon ? ` · ${fmt(m / DIST.moon, 1)} Moon trips` : ''}` : `${fmt(DIST.moon - m)} mi to go`;
+    // Past the Moon, the headline becomes "Landed" and the note tracks the trip home.
+    const moonBig = (m) => m >= DIST.moon ? 'Landed' : pct(m, DIST.moon);
+    const moonNote = (m) => m < DIST.moon ? `${fmt(DIST.moon - m)} mi to go` : m < 2 * DIST.moon ? `${pct(m - DIST.moon, DIST.moon)} of the way home` : `back home · ${fmt(Math.floor(m / (2 * DIST.moon)))} round trip${m >= 4 * DIST.moon ? 's' : ''}`;
     const lane = (name, color, m, sub, isTeam) => `<div class="lane${isTeam ? ' lane-team' : ''}">
         <div class="lane-name"><span class="dot" style="background:${color}"></span><b>${name}</b><span class="dim">${sub}</span></div>
         <div class="lane-track"><div class="lane-fill" style="width:${Math.min(100, 100 * m / DIST.moon).toFixed(2)}%;background:${color}"></div><span class="lane-moon" aria-hidden="true"></span></div>
-        <div class="lane-stat"><b>${pct(m, DIST.moon)}</b><span>${moonNote(m)}</span></div>
+        <div class="lane-stat"><b>${moonBig(m)}</b><span>${moonNote(m)}</span></div>
       </div>`;
     const lanes = racers.map((x) => lane(esc(x.p.name), x.p.color, x.miles, `${fmt(x.miles)} mi · ${pl(x.rounds, 'round')}`)).join('')
       + (racers.length > 1 ? lane('Whole group', 'var(--navy)', team, `${fmt(team)} mi combined`, true) : '');
