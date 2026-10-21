@@ -229,6 +229,8 @@
     .space table th, .space table td { padding: 8px 5px; font-size: 13px; letter-spacing: 0; }
     .space table th:first-child, .space table td:first-child { padding-left: 8px; }
   }
+  tr.prov td { color: var(--muted); }
+  tr.prov-head td { background: var(--field); color: var(--muted); font-size: 13px; font-weight: 600; letter-spacing: .3px; padding: 6px 12px; }
   .tile-miles { box-shadow: inset 0 3px 0 var(--red), var(--shadow); }
   @media (max-width: 720px) { .q-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   .q-search { width: 100%; box-sizing: border-box; padding: 10px 14px; border: 1px solid var(--line-strong); border-radius: 999px; font: inherit; color: var(--ink); background: #fff; }
@@ -389,6 +391,10 @@
   }
 
   // ---------- Overview ----------
+  // Rankings by average only count players with enough rounds to mean something.
+  const MIN_ROUNDS = 10;
+  const qualifies = (p) => (p.alltime?.games || 0) >= MIN_ROUNDS;
+
   function overviewHTML(M) {
     const { members, complete, series, byId } = M;
     const totalGames = members.reduce((s, p) => s + (p.alltime?.games || 0), 0);
@@ -400,15 +406,16 @@
 
     // bests
     const by = (f) => [...members].filter((p) => f(p) != null).sort((a, b) => f(b) - f(a))[0];
-    const bAvg = by((p) => p.alltime?.avg), bWon = by((p) => p.alltime?.won), bStreak = by((p) => p.currentStreak), bGames = by((p) => p.alltime?.games), bWeek = by((p) => p.week?.avg);
+    const byQ = (f) => [...members].filter((p) => qualifies(p) && f(p) != null).sort((a, b) => f(b) - f(a))[0];
+    const bAvg = byQ((p) => p.alltime?.avg), bWon = by((p) => p.alltime?.won), bStreak = by((p) => p.currentStreak), bGames = by((p) => p.alltime?.games), bWeek = byQ((p) => p.week?.avg);
     let hi = null; complete.forEach((d) => d.entries.forEach(([id, sc]) => { if (!hi || sc > hi.score) hi = { date: d.date, score: sc, id }; }));
     const bests = [
-      bAvg && ['Best season avg', fmt(bAvg.alltime.avg), bAvg.name, `over ${pl(bAvg.alltime.games, 'round')}`],
+      bAvg && ['Best season avg', fmt(bAvg.alltime.avg), bAvg.name, `over ${pl(bAvg.alltime.games, 'round')} · min ${MIN_ROUNDS} rounds`],
       hi && ['Highest round', fmt(hi.score), byId[hi.id].name, fmtDate(hi.date, { month: 'short', day: 'numeric' })],
       bWon && ['Most days won', fmt(bWon.alltime.won), bWon.name, `${fmt(100 * bWon.alltime.won / bWon.alltime.games, 0)}% of rounds played`],
       bStreak && bStreak.currentStreak > 0 && ['Longest active streak', fmt(bStreak.currentStreak) + (bStreak.currentStreak === 1 ? ' day' : ' days'), bStreak.name, 'consecutive days played'],
       bGames && ['Most rounds played', fmt(bGames.alltime.games), bGames.name, `since ${fmtDate(M.m.start)}`],
-      bWeek && ['Best avg this week', fmt(bWeek.week.avg), bWeek.name, pl(bWeek.week.games, 'round')],
+      bWeek && ['Best avg this week', fmt(bWeek.week.avg), bWeek.name, `${pl(bWeek.week.games, 'round')} · players with ${MIN_ROUNDS}+ season rounds`],
     ].filter(Boolean);
 
     // oddities
@@ -434,10 +441,6 @@
     ].filter(Boolean);
 
     const periodChip = (k, l) => `<button type="button" class="chip${S.period === k ? ' active' : ''}" data-period="${k}">${l}</button>`;
-    const rangeChip = (k, l) => `<button type="button" class="chip${S.range === k ? ' active' : ''}" data-range="${k}">${l}</button>`;
-    const allOn = S.players.size === 0;
-    const playerChips = `<button type="button" class="chip${allOn ? ' active' : ''}" data-player="all">All players<span class="n">×${members.length}</span></button>` +
-      members.map((p) => `<button type="button" class="chip${S.players.has(p.userId) ? ' active' : ''}" data-player="${esc(p.userId)}"><span class="dot" style="background:${p.color}"></span>${esc(p.name)}<span class="n">×${fmt(p.alltime?.games)}</span></button>`).join('');
 
     const firstFull = complete[0]?.date;
     // Hall of Famers / You're Benched!: best and worst single rounds. Each list takes at most half
@@ -472,23 +475,9 @@
 
       <section class="card">
         <div class="filter-label">Leaderboard</div>
-        <p class="sub">Week, month and season rank by average score, the same way GeoSports does, so a missed day doesn’t sink you. Click a player for their full breakdown.</p>
+        <p class="sub">Week, month and season rank by average score, the same way GeoSports does, so a missed day doesn’t sink you. Players need ${MIN_ROUNDS} season rounds to be ranked. Click a player for their full breakdown.</p>
         <div class="chips" style="margin-bottom:12px">${periodChip('today', 'Today')}${periodChip('week', 'This week')}${periodChip('month', 'This month')}${periodChip('alltime', 'Season')}</div>
         <div class="scroll-table flat">${leaderboardTable(M)}</div>
-      </section>
-
-      <section class="card">
-        <div class="filter-label">Player filter</div>
-        <p class="sub">Pick players to compare in the charts below. Click again or “All players” to clear.</p>
-        <div class="chips">${playerChips}</div>
-        <div class="filter-label">Time range</div>
-        <div class="chips">${rangeChip('7', 'Last 7 days')}${rangeChip('30', 'Last 30 days')}${rangeChip('all', 'All tracked')}</div>
-      </section>
-
-      <section class="card">
-        <h3>Daily scores</h3>
-        <p class="sub">One line per player on the 500 to 1,000 scale. Gaps are days a player skipped. Hover a dot for the date and score.</p>
-        <div class="chart-wrap" style="height:360px"><canvas id="c-daily" role="img" aria-label="Daily scores by player"></canvas></div>
       </section>
 
       <div class="row2">
@@ -499,7 +488,7 @@
         </section>
         <section class="card">
           <h3>Average score</h3>
-          <p class="sub">Season average per player, highest first.</p>
+          <p class="sub">Season average per player, highest first. Players need ${MIN_ROUNDS} rounds to appear${members.some((p) => p.alltime?.games && !qualifies(p)) ? ` (not yet: ${members.filter((p) => p.alltime?.games && !qualifies(p)).map((p) => `${esc(p.name)} ${p.alltime.games}/${MIN_ROUNDS}`).join(', ')})` : ''}.</p>
           <div class="chart-wrap" style="height:280px"><canvas id="c-avg" role="img" aria-label="Season average score per player, highest first"></canvas></div>
         </section>
       </div>
@@ -545,7 +534,9 @@
     const elapsed = Math.max(1, Math.round((toDate(M.asOf) - toDate(M.m.start)) / 864e5) + 1), perDay = team / elapsed;
     const eta = (d) => { if (team >= d) return 'Arrived'; const days = (d - team) / perDay; return days < 365 ? pl(Math.ceil(days), 'day') : fmt(days / 365.25, days / 365.25 < 10 ? 1 : 0) + ' yrs'; };
     const laps = racers.map((x) => `<div class="lap"><span class="dot" style="background:${x.p.color}"></span><span class="lap-name">${esc(x.p.name)}</span><b>${fmt(x.miles / DIST.earth, 1)}</b><span class="dim">laps</span></div>`).join('');
-    const planetRows = PLANETS.map(([n, d]) => `<tr><td><b>${n}</b></td><td class="num">${d >= 1e9 ? fmt(d / 1e9, 1) + 'B' : fmt(d / 1e6, 1) + 'M'} mi</td><td class="num">${pct(lead.miles, d)}</td><td class="num">${pct(team, d)}</td><td class="num">${eta(d)}</td></tr>`).join('');
+    // Saved for the chart, which is drawn after the HTML is in place.
+    S.planets = PLANETS.map(([n, d]) => ({ name: n, dist: d, lead: 100 * lead.miles / d, team: 100 * team / d, years: team >= d ? 0 : (d - team) / perDay / 365.25 }));
+    S.planetsLead = lead.p.name; S.planetsPerDay = perDay;
     return intro + `<section class="card space">
         <h3>Race to the Moon</h3>
         <p class="sub">The Moon is ${fmt(DIST.moon)} miles away. More miles missed means further along.</p>
@@ -560,9 +551,9 @@
         </section>
         <section class="card space">
           <h3>On to the planets</h3>
-          <p class="sub">Each planet at its closest approach to Earth (M = million, B = billion miles). ${esc(lead.p.name)} leads the race.</p>
-          <div class="scroll-table flat"><table><thead><tr><th>Planet</th><th class="num">Distance</th><th class="num">${esc(lead.p.name)}</th><th class="num">${racers.length > 1 ? 'Group' : 'Total'}</th><th class="num">ETA</th></tr></thead><tbody>${planetRows}</tbody></table></div>
-          <p class="sub" style="margin:10px 0 0">ETA is how long until the group’s combined misses reach each planet, at its current pace of ${fmt(perDay)} miles a day.</p>
+          <p class="sub">Each planet at its closest approach to Earth. ${esc(lead.p.name)} leads the race.</p>
+          <div class="chart-wrap" style="height:330px"><canvas id="c-planets" role="img" aria-label="Years until the group's combined miles missed reach each planet"></canvas></div>
+          <p class="sub" style="margin:10px 0 0">Bars show how many years until the group’s combined misses reach each planet, at the current pace of ${fmt(perDay)} miles a day. Each gridline is 10× further. Hover a bar for the distance and how far along everyone is.</p>
         </section>
       </div>`;
   }
@@ -571,13 +562,13 @@
   function seasonTiles(M) {
     const { members, days, asOf } = M;
     const names = (list) => list.map((p) => esc(p.name)).join(' & ');
-    const played = members.filter((p) => p.alltime?.games > 0);
+    const played = members.filter(qualifies);
     const hi = played.length ? Math.max(...played.map((p) => p.alltime.avg)) : null;
     const lo = played.length ? Math.min(...played.map((p) => p.alltime.avg)) : null;
     const leaders = played.filter((p) => p.alltime.avg === hi), trailers = played.filter((p) => p.alltime.avg === lo);
     const all = []; days.forEach((d) => Object.entries(d.scores).forEach(([id, sc]) => { if (M.byId[id]) all.push(sc); }));
     const from7 = addDays(asOf, -6);
-    const r7 = members.map((p) => { const s = days.filter((d) => d.date >= from7 && d.date <= asOf && d.scores[p.userId] != null).map((d) => d.scores[p.userId]); return { p, n: s.length, avg: mean(s) }; }).filter((x) => x.n);
+    const r7 = members.filter(qualifies).map((p) => { const s = days.filter((d) => d.date >= from7 && d.date <= asOf && d.scores[p.userId] != null).map((d) => d.scores[p.userId]); return { p, n: s.length, avg: mean(s) }; }).filter((x) => x.n);
     const hi7 = r7.length ? Math.max(...r7.map((x) => x.avg)) : null;
     const lead7 = r7.filter((x) => x.avg === hi7);
     // Each player only counts from the day they joined the group, so new members aren't marked absent for days before they were in it.
@@ -585,10 +576,10 @@
     const lateJoiners = members.filter((p) => p.memberSince && days.length && p.memberSince > days[0].date).length;
     const tile = (label, value, who, sub, cls) => `<div class="metric-card ${cls || ''}"><p class="metric-label">${label}</p><p class="metric-value">${value}</p>${who ? `<p class="metric-who">${who}</p>` : ''}<p class="metric-sub">${sub}</p></div>`;
     return [
-      tile('Overall leader', fmt(hi), leaders.length ? names(leaders) : '—', leaders.length ? `season avg · ${leaders.length === 1 ? pl(leaders[0].alltime.games, 'round') : 'tied'}` : 'no rounds yet', 'tile-lead'),
-      tile('Needs to step it up', fmt(lo), played.length > 1 ? names(trailers) : '—', played.length > 1 ? `lowest season avg · ${trailers.length === 1 ? pl(trailers[0].alltime.games, 'round') : 'tied'}` : 'needs 2+ players with rounds', 'tile-low'),
+      tile('Overall leader', fmt(hi), leaders.length ? names(leaders) : '—', leaders.length ? `season avg · ${leaders.length === 1 ? pl(leaders[0].alltime.games, 'round') : 'tied'} · min ${MIN_ROUNDS} rounds` : `no one has ${MIN_ROUNDS} rounds yet`, 'tile-lead'),
+      tile('Needs to step it up', fmt(lo), played.length > 1 ? names(trailers) : '—', played.length > 1 ? `lowest season avg · ${trailers.length === 1 ? pl(trailers[0].alltime.games, 'round') : 'tied'} · min ${MIN_ROUNDS} rounds` : `needs 2+ players with ${MIN_ROUNDS} rounds`, 'tile-low'),
       tile('Group average', fmt(mean(all)), '', `per round, all ${pl(all.length, 'round')}`),
-      tile('7-day leader', fmt(hi7), lead7.length ? lead7.map((x) => esc(x.p.name)).join(' & ') : '—', lead7.length ? `avg over the last 7 days · ${lead7.length === 1 ? pl(lead7[0].n, 'round') : 'tied'}` : 'no rounds in the last 7 days'),
+      tile('7-day leader', fmt(hi7), lead7.length ? lead7.map((x) => esc(x.p.name)).join(' & ') : '—', lead7.length ? `avg over the last 7 days · ${lead7.length === 1 ? pl(lead7[0].n, 'round') : 'tied'} · ${MIN_ROUNDS}+ season rounds` : 'no qualified rounds in the last 7 days'),
       tile('Rounds tracked', pl(days.length, 'day'), pl(all.length, 'game') + ' played', `days recorded since ${esc(fmtDate(M.m.start))}`),
       tile('Performance rate', possible ? fmt(100 * all.length / possible, 0) + '%' : '—', '', possible ? `${fmt(all.length)} of ${fmt(possible)} possible rounds (${members.length} players × ${pl(days.length, 'day')}${lateJoiners ? ', counted from each player’s join date' : ''})` : 'no days yet')
     ].join('');
@@ -613,14 +604,18 @@
       const t = Object.fromEntries((M.m.today || []).map((r) => [r.userId, r.score]));
       rows = M.members.map((p) => ({ p, v: t[p.userId] ?? null, g: t[p.userId] != null ? 1 : 0, w: null }));
     } else rows = M.members.map((p) => ({ p, v: p[S.period]?.avg ?? null, g: p[S.period]?.games || 0, w: p[S.period]?.won ?? 0 }));
-    rows.sort((a, b) => (b.v ?? -1) - (a.v ?? -1));
+    // Only players with MIN_ROUNDS season rounds are ranked; everyone else is listed underneath as provisional.
+    rows.forEach((r) => { r.q = qualifies(r.p); });
+    rows.sort((a, b) => (b.q - a.q) || ((b.v ?? -1) - (a.v ?? -1)));
     let rank = 0, prev = null;
+    const firstProv = rows.findIndex((r) => !r.q);
     const body = rows.map((r, i) => {
-      if (r.v != null && r.v !== prev) rank = i + 1; prev = r.v;
+      if (r.q && r.v != null && r.v !== prev) rank = i + 1; if (r.q) prev = r.v;
       const me = r.p.userId === M.me;
-      return `<tr class="clickable${me ? ' me' : ''}" data-focus="${esc(r.p.userId)}" tabindex="0">
-        <td class="rank">${r.v == null ? '—' : rank}</td>
-        <td><div class="player-cell"><span class="swatch" style="background:${r.p.color}"></span>${esc(r.p.name)}${rank === 1 && r.v != null ? ' <span class="crown">LEADER</span>' : ''}</div></td>
+      const shownRank = r.q && r.v != null ? rank : '—';
+      return `${i === firstProv ? `<tr class="prov-head"><td colspan="7">Provisional · fewer than ${MIN_ROUNDS} season rounds, not ranked yet</td></tr>` : ''}<tr class="clickable${me ? ' me' : ''}${r.q ? '' : ' prov'}" data-focus="${esc(r.p.userId)}" tabindex="0">
+        <td class="rank">${shownRank}</td>
+        <td><div class="player-cell"><span class="swatch" style="background:${r.p.color}"></span>${esc(r.p.name)}${shownRank === 1 ? ' <span class="crown">LEADER</span>' : ''}${r.q ? '' : ` <span class="dim">${fmt(r.p.alltime?.games || 0)}/${MIN_ROUNDS}</span>`}</div></td>
         <td class="num">${r.v == null ? '<span class="dim">Not played</span>' : fmt(r.v)}</td>
         <td class="num">${fmt(r.g)}</td>
         <td class="num">${r.w == null ? '—' : fmt(r.w)}</td>
@@ -657,24 +652,12 @@
 
   function overviewCharts(M) {
     if (!window.Chart) return;
-    const shown = M.members.filter((p) => S.players.size === 0 || S.players.has(p.userId));
-    let dates = M.days.map((d) => d.date);
-    if (S.range !== 'all') { const cut = addDays(M.asOf, -Number(S.range)); dates = dates.filter((d) => d > cut); }
-    const lookup = Object.fromEntries(M.days.map((d) => [d.date, d.scores || {}]));
-    const ds = shown.map((p) => ({ label: p.name, data: dates.map((d) => lookup[d][p.userId] ?? null), borderColor: p.color, backgroundColor: p.color,
-      borderWidth: p.userId === M.me ? 2.6 : 1.8, pointRadius: dates.length > 40 ? 2 : 3.5, pointHoverRadius: 7, pointHitRadius: 10, tension: 0, spanGaps: false }));
-    charts.daily = new Chart($('c-daily'), { type: 'line', data: { labels: dates.map((d) => fmtDate(d)), datasets: ds },
-      options: baseOpts({ interaction: { mode: 'nearest', intersect: true },
-        scales: { x: { grid: { color: 'rgba(14,31,63,0.05)' }, ticks: { color: '#5d6a82', maxRotation: 0, autoSkip: true, maxTicksLimit: 10 } },
-                  y: { min: 500, max: 1000, grid: { color: 'rgba(14,31,63,0.08)' }, ticks: { stepSize: 100, precision: 0, color: '#5d6a82' } } },
-        plugins: { ...baseOpts().plugins, tooltip: { ...baseOpts().plugins.tooltip, displayColors: true,
-          callbacks: { title: (c) => fmtDate(dates[c[0].dataIndex], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }), label: (c) => ` ${c.dataset.label}: ${fmt(c.raw)}` } } } }) });
-
+    const shown = M.members;
     const wins = [...shown].sort((a, b) => (b.alltime?.won || 0) - (a.alltime?.won || 0));
     charts.wins = new Chart($('c-wins'), { type: 'bar', data: { labels: wins.map((p) => p.name), datasets: [{ data: wins.map((p) => p.alltime?.won || 0), backgroundColor: wins.map((p) => p.color + 'b3'), borderColor: wins.map((p) => p.color), borderWidth: 1 }] },
       options: baseOpts({ indexAxis: 'y', plugins: { legend: { display: false }, tooltip: baseOpts().plugins.tooltip } }) });
 
-    const avgs = shown.filter((p) => p.alltime?.games > 0).sort((a, b) => b.alltime.avg - a.alltime.avg);
+    const avgs = shown.filter(qualifies).sort((a, b) => b.alltime.avg - a.alltime.avg);
     // Draws each bar's value just above it.
     const valueLabels = { id: 'valueLabels', afterDatasetsDraw(chart) {
       const { ctx } = chart; ctx.save(); ctx.fillStyle = '#0e1f3f'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
@@ -684,6 +667,30 @@
     charts.avg = new Chart($('c-avg'), { type: 'bar', plugins: [valueLabels], data: { labels: avgs.map((p) => p.name), datasets: [{ data: avgs.map((p) => Math.round(p.alltime.avg)), backgroundColor: avgs.map((p) => p.color + 'b3'), borderColor: avgs.map((p) => p.color), borderWidth: 1, maxBarThickness: 64 }] },
       options: baseOpts({ layout: { padding: { top: 26 } }, scales: { y: { min: 0, max: 1000, grid: { color: 'rgba(14,31,63,0.08)' }, ticks: { precision: 0, stepSize: 200, color: '#5d6a82' } }, x: { grid: { display: false }, ticks: { color: '#0e1f3f', maxRotation: 0, autoSkip: false, font: { family: "'Barlow Condensed', sans-serif", size: 13, weight: 700 }, callback: function (v) { const n = this.getLabelForValue(v); return n.length > 12 ? n.split(' ') : n; } } } },
         plugins: { legend: { display: false }, tooltip: { ...baseOpts().plugins.tooltip, callbacks: { title: (c) => avgs[c[0].dataIndex].name, label: (c) => `${fmt(avgs[c.dataIndex].alltime.avg)} avg · ${pl(avgs[c.dataIndex].alltime.games, 'round')}` } } } }) });
+    planetsChart();
+  }
+
+  function planetsChart() {
+    const el = $('c-planets'); if (!el || !window.Chart || !S.planets) return;
+    const P = S.planets, yrs = (v) => v === 0 ? 'Arrived' : v < 1 ? pl(Math.ceil(v * 365.25), 'day') : fmt(v, v < 10 ? 1 : 0) + ' yrs';
+    const miles = (d) => d >= 1e9 ? fmt(d / 1e9, 1) + ' billion mi' : fmt(d / 1e6, 1) + ' million mi';
+    const pc = (x) => x >= 10 ? fmt(x, 0) + '%' : x >= 0.1 ? fmt(x, 1) + '%' : fmt(x, 3) + '%';
+    // Writes each bar's ETA just past its end.
+    const endLabels = { id: 'endLabels', afterDatasetsDraw(chart) {
+      const { ctx } = chart; ctx.save(); ctx.fillStyle = '#0e1f3f'; ctx.textBaseline = 'middle'; ctx.font = "600 15px 'Barlow Condensed', sans-serif";
+      chart.getDatasetMeta(0).data.forEach((bar, i) => { const t = yrs(P[i].years); const w = ctx.measureText(t).width; const inside = bar.x + w + 8 > chart.chartArea.right;
+        ctx.fillStyle = inside ? '#fff' : '#0e1f3f'; ctx.textAlign = inside ? 'right' : 'left'; ctx.fillText(t, inside ? bar.x - 6 : bar.x + 6, bar.y); });
+      ctx.restore(); } };
+    const colors = ['#c9a227', '#d42a3c', '#8a8f99', '#c46b2a', '#b8932f', '#3aa3b5', '#2f5fd0'];
+    charts.planets = new Chart(el, { type: 'bar', plugins: [endLabels],
+      data: { labels: P.map((x) => x.name), datasets: [{ data: P.map((x) => Math.max(x.years, 0.05)), backgroundColor: colors.map((c) => c + 'cc'), borderColor: colors, borderWidth: 1, maxBarThickness: 30 }] },
+      options: baseOpts({ indexAxis: 'y', layout: { padding: { right: 62 } },
+        scales: { x: { type: 'logarithmic', min: 1, max: 10 ** Math.ceil(Math.log10(Math.max(...P.map((x) => x.years), 10))), grid: { color: (c) => [1, 10, 100, 1000, 10000].includes(c.tick?.value) ? 'rgba(14,31,63,0.12)' : 'transparent' },
+                       ticks: { color: '#5d6a82', maxRotation: 0, autoSkip: false, callback: (v) => [1, 10, 100, 1000, 10000].includes(v) ? fmt(v) + (v === 1 ? ' yr' : ' yrs') : '' } },
+                  y: { grid: { display: false }, ticks: { color: '#0e1f3f', font: { family: "'Barlow Condensed', sans-serif", size: 15, weight: 700 } } } },
+        plugins: { legend: { display: false }, tooltip: { ...baseOpts().plugins.tooltip, callbacks: {
+          title: (c) => P[c[0].dataIndex].name + ' · ' + miles(P[c[0].dataIndex].dist),
+          label: (c) => { const x = P[c.dataIndex]; return [` Group: ${pc(x.team)} of the way`, ` ${S.planetsLead}: ${pc(x.lead)} of the way`, ` ETA: ${yrs(x.years)}`]; } } } } }) });
   }
 
   // ---------- Player analysis ----------
@@ -696,7 +703,7 @@
   function playerHTML(M) {
     const p = M.byId[S.focus]; const s = M.series[p.userId].map((x) => x.score);
     const at = p.alltime || {}, wk = p.week || {};
-    const ranked = [...M.members].filter((x) => x.alltime?.avg != null).sort((a, b) => b.alltime.avg - a.alltime.avg);
+    const ranked = [...M.members].filter((x) => x.alltime?.avg != null && qualifies(x)).sort((a, b) => b.alltime.avg - a.alltime.avg);
     const pos = ranked.findIndex((x) => x.userId === p.userId);
     const r7 = M.recent(p.userId, 7), r30 = M.recent(p.userId, 30);
     const best = s.length ? Math.max(...s) : null, worst = s.length ? Math.min(...s) : null;
@@ -750,7 +757,7 @@
       <h2 class="section-title">${esc(p.name)} · ${p.role === 'owner' ? 'Group owner' : 'Member'}</h2>
       <p class="section-sub">Joined ${p.memberSince ? fmtDate(p.memberSince, { month: 'long', day: 'numeric', year: 'numeric' }) : '—'}. Stats cover ${pl(s.length, 'round')} since the season started on ${esc(fmtDate(M.m.start))}.</p>
       <div class="metric-grid four">
-        ${metric('Season avg', fmt(at.avg), pos >= 0 ? `#${pos + 1} in the group` : 'not ranked')}
+        ${metric('Season avg', fmt(at.avg), pos >= 0 ? `#${pos + 1} in the group` : `unranked · ${fmt(at.games || 0)}/${MIN_ROUNDS} rounds`)}
         ${metric('Rounds played', fmt(at.games), `since ${fmtDate(M.m.start)}`)}
         ${metric('Days won', fmt(at.won), winRate != null ? `${fmt(winRate, 1)}% win rate` : '—')}
         ${metric('Current streak', fmt(p.currentStreak || 0) + ' d', p.currentStreak ? 'consecutive days' : 'no active streak')}
@@ -859,15 +866,15 @@
     const perRound = total / days;
     const sharers = [...new Set(S.q.map((x) => x.uid))].map((uid) => {
       const r = S.q.filter((x) => x.uid === uid); const n = new Set(r.map((x) => x.date)).size;
-      return { uid, per: r.reduce((t, x) => t + (x.miles || 0), 0) / n };
-    }).sort((a, b) => a.per - b.per);
+      return { uid, n, per: r.reduce((t, x) => t + (x.miles || 0), 0) / n };
+    }).filter((x) => x.n >= MIN_ROUNDS).sort((a, b) => a.per - b.per);
     const rank = sharers.findIndex((x) => x.uid === p.userId) + 1;
     const mi = (v) => fmt(v, 0) + '<span class="of"> mi</span>';
     return `<div class="metric-grid four miles-grid" style="margin:12px 0 0">
         <div class="metric-card tile-miles"><p class="metric-label">Total miles missed</p><p class="metric-value">${mi(total)}</p><p class="metric-sub">across ${fmt(mine.length)} ${mine.length === 1 ? 'guess' : 'guesses'} in ${pl(days, 'round')}</p></div>
         <div class="metric-card"><p class="metric-label">Miles missed per round</p><p class="metric-value">${mi(perRound)}</p><p class="metric-sub">all 5 guesses added up</p></div>
         <div class="metric-card"><p class="metric-label">Avg miss per guess</p><p class="metric-value">${mi(total / mine.length)}</p><p class="metric-sub">median ${fmt([...mine.map((x) => x.miles)].sort((a, b) => a - b)[Math.floor((mine.length - 1) / 2)], 0)} mi</p></div>
-        <div class="metric-card"><p class="metric-label">Accuracy rank</p><p class="metric-value">#${rank}<span class="of"> of ${sharers.length}</span></p><p class="metric-sub">fewest miles per round among players who shared</p></div>
+        <div class="metric-card"><p class="metric-label">Accuracy rank</p>${rank ? `<p class="metric-value">#${rank}<span class="of"> of ${sharers.length}</span></p><p class="metric-sub">fewest miles per round · players with ${MIN_ROUNDS}+ shared rounds</p>` : `<p class="metric-value">—</p><p class="metric-sub">unranked · ${fmt(days)}/${MIN_ROUNDS} shared rounds</p>`}</div>
       </div>
       ${funMilesHTML(total)}`;
   }

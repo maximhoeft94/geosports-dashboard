@@ -13,8 +13,8 @@ A live scoreboard for my friends' daily [GeoSports](https://geosports.app) games
 - Hall of Famers and You're Benched!: the season's top 3 and bottom 3 single rounds
 - Season Totals: overall leader and lowest average, group average, 7-day leader, rounds tracked, and performance rate (rounds played out of every possible player-day)
 - Leaderboard for today, this week, this month and the season, ranked by average like GeoSports does, with a 7-day trend line per player
-- Daily scores chart (500 to 1,000 scale, hover any dot for the date and score) with player and date-range filters
 - Days-won chart and an average-score chart ranked highest first
+- Space Race: every mile a guess has missed by, added up per player and for the group, as a race to the Moon, laps around the Earth and a chart of years until the group reaches each planet
 - Appendix with the full daily results table (collapsed by default, click to open)
 
 **Player Analysis tab**
@@ -37,7 +37,7 @@ GeoSports group ──(refresh)──▶ Google Sheet ──(CSV)──▶ index
 ```
 
 - **Data:** a view-only Google Sheet with six tabs. `Daily Scores` has one row per day and one column per player. `Players` is the group roster; anyone marked `left` in its Status column is dropped from every stat. `Info` holds the group name, the season start date and when the data was last refreshed. `Question Scores` has one row per player per question (points only, no question text or answers). `Questions` has each day's five question prompts (no answers). `Data Sources` records where each table came from.
-- **Stats:** every average, win, streak and record is calculated in the browser from `Daily Scores`, counting only days from the season start on. Weeks run Monday to Sunday, and a tie for the day's top score counts as a win for each tied player.
+- **Stats:** every average, win, streak and record is calculated in the browser from `Daily Scores`, counting only days from the season start on. Weeks run Monday to Sunday, and a tie for the day's top score counts as a win for each tied player. Anything ranked by average (leaderboards, leaders, best averages, accuracy rank) only includes players with at least 10 rounds; newer players are listed as provisional.
 - **Refreshing:** GeoSports shows every member's daily scores for the last 7 days. Each refresh adds new days to the sheet and updates the last 7, so late plays get picked up and older days are never overwritten. As long as a refresh happens at least once a week, no day is lost.
 - **Question scores:** GeoSports only shows each player their own question-by-question results. The owner's are pulled automatically. Everyone else shares theirs with the [share page](https://maximhoeft94.github.io/geosports-dashboard/share.html): a bookmark button that reads the player's own per-question points for every day since the season started and turns them into a share code. A shared day is only imported, and only counted on the page, when its five question scores add up to that player's official daily score.
 - **Page:** a single static `index.html` on GitHub Pages. It fetches each tab's CSV export straight from the browser and computes everything client-side, so there's no backend.
