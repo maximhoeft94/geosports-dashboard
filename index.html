@@ -321,7 +321,7 @@
       <span class="subtitle" id="subtitle">GeoSports group UNK67F · daily results</span>
     </div>
   </div>
-  <div class="meta"><span id="meta-line">Waiting for data…</span><button class="btn" id="sync-btn" type="button">↻ Sync</button></div>
+  <div class="meta"><span id="meta-line">Waiting for data…</span></div>
 </header>
 
 <main>
@@ -1097,12 +1097,9 @@
     $('app').innerHTML = `<div class="card empty-state"><h2>Can’t load the scores</h2><p>${esc(msg)}</p><p style="margin-top:12px"><a href="${SHEET_URL}" target="_blank" rel="noopener" style="color:var(--royal)">Open the Google Sheet</a></p></div>`;
   }
   async function syncNow() {
-    const btn = $('sync-btn'); btn.disabled = true; btn.textContent = '↻ Syncing…';
     try { await loadSheet(); render(); }
     catch (err) { if (!S.meta) showError(err.message || 'The sheet could not be reached. Check your connection and try again.'); }
-    btn.disabled = false; btn.textContent = '↻ Sync';
   }
-  $('sync-btn').addEventListener('click', syncNow);
   syncNow();
 })();
 </script>
