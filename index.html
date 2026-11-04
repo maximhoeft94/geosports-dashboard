@@ -489,7 +489,7 @@
     const bests = [
       bAvg && ['Best season avg', fmt(bAvg.alltime.avg), bAvg.name, `over ${pl(bAvg.alltime.games, 'round')} · Youth League not counted`],
       hi && ['Highest round', fmt(hi.score), byId[hi.id].name, fmtDate(hi.date, { month: 'short', day: 'numeric' })],
-      bWon && ['Most days won', fmt(bWon.alltime.won), bWon.name, `${fmt(100 * bWon.alltime.won / bWon.alltime.games, 0)}% of rounds played`],
+      bWon && ['Most days won', fmt(bWon.alltime.won), bWon.name, `in their league · ${fmt(100 * bWon.alltime.won / bWon.alltime.games, 0)}% of rounds played`],
       bStreak && bStreak.currentStreak > 0 && ['Longest active streak', fmt(bStreak.currentStreak) + (bStreak.currentStreak === 1 ? ' day' : ' days'), bStreak.name, 'consecutive days played'],
       bGames && ['Most rounds played', fmt(bGames.alltime.games), bGames.name, `since ${fmtDate(M.m.start)}`],
       bWeek && ['Best avg this week', fmt(bWeek.week.avg), bWeek.name, pl(bWeek.week.games, 'round')],
@@ -551,7 +551,7 @@
 
       <section class="card">
         <div class="filter-label">Leaderboard</div>
-        <p class="sub">Ranked by average score, the same way GeoSports does, so a missed day doesn’t sink you. Players are grouped into leagues by how often they play. Click a player for their full breakdown.</p>
+        <p class="sub">Ranked by average score, the same way GeoSports does, so a missed day doesn’t sink you. Players are grouped into leagues by how often they play, and days won only count wins within your own league. Click a player for their full breakdown.</p>
         <div class="chips" style="margin-bottom:12px">${periodChip('today', 'Today')}${periodChip('week', 'This week')}${periodChip('month', 'This month')}${periodChip('alltime', 'Season')}</div>
         ${M.league === 'all' && (S.period === 'month' || S.period === 'alltime') ? `<div class="chips" style="margin:-4px 0 12px"><button type="button" class="chip${S.lbView === 'bucket' ? ' active' : ''}" data-lbview="bucket">By league</button><button type="button" class="chip${S.lbView === 'overall' ? ' active' : ''}" data-lbview="overall">Overall</button></div>` : ''}
         <div class="scroll-table flat">${leaderboardTable(M)}</div>
@@ -560,7 +560,7 @@
       <div class="row2${M.league === 'all' ? ' row-full' : ''}">
         <section class="card">
           <h3>Days won</h3>
-          <p class="sub">${M.league === 'all' ? 'Daily wins per player this season, grouped by league.' : 'Days each player had the top score in the league this season.'}</p>
+          <p class="sub">${M.league === 'all' ? 'Days each player had the top score in their own league this season.' : 'Days each player had the top score in the league this season.'}</p>
           <div class="chart-wrap" style="height:${M.league === 'all' ? 360 : 280}px"><canvas id="c-wins" role="img" aria-label="Days won per player"></canvas></div>
         </section>
         <section class="card">
@@ -1075,8 +1075,9 @@
     const from = se.start < trackStart ? trackStart : se.start, to = se.end < asOf ? se.end : asOf;
     const days = allDays.filter((d) => d.date >= from && d.date <= to);
     const nDays = Math.round((toDate(to) - toDate(from)) / 864e5) + 1, length = Math.round((toDate(se.end) - toDate(from)) / 864e5) + 1;
-    let members = computeStats(roster, days, to).filter((p) => p.alltime.games > 0);
-    members.forEach((p) => { p.share = p.alltime.games / nDays; p.bucket = bucketOf(p.alltime.games, nDays); });
+    const leagueOf = Object.fromEntries(computeStats(roster, days, to).map((p) => [p.userId, bucketOf(p.alltime.games, nDays)]));
+    let members = computeStats(roster, days, to, leagueOf).filter((p) => p.alltime.games > 0);
+    members.forEach((p) => { p.share = p.alltime.games / nDays; p.bucket = leagueOf[p.userId]; });
     const keyOf = Object.fromEntries(BUCKETS.map((b) => [b.label, b.key]));
     if (savedRows.length) members = savedRows.map((r) => ({ userId: r['User ID'], name: r.Player, bucket: keyOf[r.League] || 'rookie', share: (num(r['Share of days']) || 0) / 100, alltime: { avg: num(r.Avg), games: num(r.Rounds) || 0, won: num(r['Days won']) || 0 } }));
     return { ...se, from, to, days, nDays, length, final: se.end < asOf, saved: savedRows.length > 0, members };
@@ -1095,7 +1096,7 @@
       const champs = BUCKETS.map((b, i) => { const inB = se.members.filter((p) => p.bucket === b.key && p.alltime.avg != null); if (!inB.length) return ''; const top = Math.max(...inB.map((p) => p.alltime.avg)); const who = inB.filter((p) => p.alltime.avg === top);
         return tile(`${b.label} ${se.final ? 'champion' : 'leader'}`, fmt(top), who.map((p) => esc(p.name)).join(' & '), `season avg · ${who.length === 1 ? pl(who[0].alltime.games, 'round') : 'tied'}`, i === 0 ? 'tile-lead' : ''); }).join('');
       const tiles = champs
-        + (wonBy.length ? tile('Most days won', fmt(topWon), wonBy.map((p) => esc(p.name)).join(' & '), `out of ${pl(se.days.length, 'day')}`) : '')
+        + (wonBy.length ? tile('Most days won', fmt(topWon), wonBy.map((p) => esc(p.name)).join(' & '), `in their league · out of ${pl(se.days.length, 'day')}`) : '')
         + (best ? tile('Best round', fmt(best.score), nameOf(best.id), esc(fmtDate(best.date, { weekday: 'short', month: 'short', day: 'numeric' }))) : '')
         + tile('Group average', fmt(groupAvg), '', `per round, all ${pl(totalRounds, 'round')}`);
       const rows = BUCKETS.map((b) => { const g = se.members.filter((p) => p.bucket === b.key).sort((a, c) => (c.alltime.avg ?? -1) - (a.alltime.avg ?? -1)); if (!g.length) return '';
@@ -1200,9 +1201,14 @@
 
   // Every stat is calculated from the Daily Scores tab, starting on the tracking start date.
   function dayOffset(s, n) { const [y, m, d] = s.split('-').map(Number); const t = new Date(y, m - 1, d + n, 12); return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0'); }
-  function computeStats(roster, days, asOf) {
+  // groupOf (optional) maps each player to their league: a day is then won by the top score within each league,
+  // so players only compete against their own league for days won.
+  function computeStats(roster, days, asOf, groupOf) {
     const winners = {};
-    days.forEach((d) => { const v = Object.values(d.scores); if (!v.length) return; const top = Math.max(...v); winners[d.date] = Object.keys(d.scores).filter((id) => d.scores[id] === top); });
+    days.forEach((d) => {
+      const groups = {}; Object.keys(d.scores).forEach((id) => { const g = groupOf ? (groupOf[id] ?? '-') : 'all'; (groups[g] = groups[g] || []).push(id); });
+      winners[d.date] = Object.values(groups).flatMap((ids) => { const top = Math.max(...ids.map((id) => d.scores[id])); return ids.filter((id) => d.scores[id] === top); });
+    });
     const [y, m, dd] = asOf.split('-').map(Number);
     const weekStart = dayOffset(asOf, -((new Date(y, m - 1, dd, 12).getDay() + 6) % 7)); // weeks run Monday to Sunday
     const monthStart = asOf.slice(0, 8) + '01';
@@ -1239,9 +1245,10 @@
     const days = allDays.filter((d) => d.date >= start);
     const seasonList = []; for (let se = seasonOf(trackStart); seasonList.length < 60; se = seasonOf(addDays(se.end, 1))) { seasonList.push(se); if (se.key === season.key) break; }
     S.seasons = seasonList.reverse().map((se) => seasonSummary(se, roster, allDays, asOf, trackStart, saved.filter((r) => r.Season === se.label)));
-    const members = computeStats(roster, days, asOf);
     const seasonDays = Math.round((toDate(asOf) - toDate(start)) / 864e5) + 1;
-    members.forEach((p) => { p.share = (p.alltime?.games || 0) / seasonDays; p.bucket = bucketOf(p.alltime?.games || 0, seasonDays); });
+    const leagueOf = Object.fromEntries(computeStats(roster, days, asOf).map((p) => [p.userId, bucketOf(p.alltime?.games || 0, seasonDays)]));
+    const members = computeStats(roster, days, asOf, leagueOf);
+    members.forEach((p) => { p.share = (p.alltime?.games || 0) / seasonDays; p.bucket = leagueOf[p.userId]; });
     S.meta = {
       seasonDays, season, trackStart, seasonLength: Math.round((toDate(season.end) - toDate(start)) / 864e5) + 1,
       group: { name: I['Group'] || 'GeoSports', code: I['Group code'] || '' }, start,
