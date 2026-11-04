@@ -310,8 +310,8 @@
     header h1 { font-size: 20px; }
     header .subtitle { font-size: 12px; letter-spacing: 1.5px; }
     header .meta { width: 100%; justify-content: space-between; font-size: 14px; }
-    .tab-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; width: 100%; box-sizing: border-box; border-radius: 18px; }
-    .tab-btn { font-size: 14px; letter-spacing: .5px; padding: 8px 4px; white-space: nowrap; }
+    .tab-bar { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; width: 100%; box-sizing: border-box; border-radius: 18px; }
+    .tab-btn { font-size: 14px; letter-spacing: .5px; padding: 8px 12px; white-space: nowrap; }
     .card { padding: 14px 12px; }
     .row2 { grid-template-columns: minmax(0,1fr); }
     .metric-grid, .metric-grid.four { grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; }
@@ -347,6 +347,7 @@
     <button class="tab-btn" type="button" role="tab" id="tab-player" data-tab="player" aria-selected="false">Player Analysis</button>
     <button class="tab-btn" type="button" role="tab" id="tab-questions" data-tab="questions" aria-selected="false">Questions</button>
     <button class="tab-btn" type="button" role="tab" id="tab-seasons" data-tab="seasons" aria-selected="false">Seasons</button>
+    <button class="tab-btn" type="button" role="tab" id="tab-space" data-tab="space" aria-selected="false">Space Race</button>
   </nav>
 
   <div id="app">
@@ -378,7 +379,7 @@
   const sd = (a) => { if (a.length < 2) return null; const m = mean(a); return Math.sqrt(a.reduce((s, x) => s + (x - m) ** 2, 0) / (a.length - 1)); };
 
   try { const l = localStorage.getItem('gs-league'); if (['regular', 'part', 'rookie'].includes(l)) S.league = l; } catch (e) {}
-  try { const t = localStorage.getItem('gs-tab'); if (t === 'player' || t === 'questions' || t === 'seasons') S.tab = t; } catch (e) {}
+  try { const t = localStorage.getItem('gs-tab'); if (t === 'player' || t === 'questions' || t === 'seasons' || t === 'space') S.tab = t; } catch (e) {}
 
   // ---------- Model ----------
   function model(league) {
@@ -422,6 +423,7 @@
     Object.values(charts).forEach((c) => c.destroy()); for (const k in charts) delete charts[k];
     if (S.tab === 'questions') { $('app').innerHTML = questionsTabHTML(); return; }
     if (S.tab === 'seasons') { $('app').innerHTML = seasonsTabHTML(M); return; }
+    if (S.tab === 'space') { $('app').innerHTML = spaceRaceHTML(M); return; }
     if (S.tab === 'overview') {
       // A league with nobody in it right now falls back to the full group.
       if (S.league !== 'all' && !M.members.some((p) => p.bucket === S.league)) S.league = 'all';
@@ -568,7 +570,6 @@
         </section>
       </div>
 
-      ${spaceRaceHTML(M)}
 
       <hr class="exec-rule">
       <h2 class="section-title">Appendix</h2>
@@ -582,7 +583,7 @@
       </section>`;
   }
 
-  // ---------- Space Race (Overview) ----------
+  // ---------- Space Race (its own tab, whole group, current season) ----------
   // Every mile a guess missed by, added up per player, then measured as trips to the Moon and laps of the Earth.
   // A trip runs Earth → Moon, then Moon → Earth, then out again, and so on.
   function moonTrip(m) {
@@ -674,7 +675,7 @@
     return `<section class="card league-bar${S.league === 'all' ? '' : ' lg-' + S.league}">
         <div class="filter-label">League</div>
         <div class="chips">${chip('all', 'All players', M.members.length)}${BUCKETS.map((b) => chip(b.key, b.label, n(b.key))).join('')}</div>
-        <p class="sub" style="margin:10px 0 0">${cur ? `Showing the <b>${cur.label}</b>: players who have played ${cur.rule} since the season started. Season Totals, the leaderboard, charts and Space Race below only count these players.` : 'Showing everyone. Pick a league to see its own Season Totals, standings, charts and Space Race. Leagues are set by the share of days played since the season started and update every day.'}</p>
+        <p class="sub" style="margin:10px 0 0">${cur ? `Showing the <b>${cur.label}</b>: players who have played ${cur.rule} since the season started. Season Totals, the leaderboard and charts below only count these players.` : 'Showing everyone. Pick a league to see its own Season Totals, standings and charts. Leagues are set by the share of days played since the season started and update every day.'}</p>
       </section>`;
   }
 
