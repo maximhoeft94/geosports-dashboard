@@ -179,6 +179,10 @@
   .b-part { background: #dfe6f3; color: var(--navy); }
   .b-rookie { background: var(--gold-soft); color: #8a5a00; border: 1px solid #f0d58a; }
   .section-title .bucket { font-size: 13px; vertical-align: 4px; }
+  .league-bar .chips { gap: 8px; }
+  .league-bar.lg-regular { border-top: 5px solid var(--navy); }
+  .league-bar.lg-part { border-top: 5px solid #7f9bc9; }
+  .league-bar.lg-rookie { border-top: 5px solid var(--gold); }
   .crown { font-family: var(--font-cond); font-size: 11px; font-weight: 700; letter-spacing: 1px; color: var(--ink); background: var(--gold); padding: 1px 6px; border-radius: 3px; }
   .pill { display: inline-block; padding: 0 9px; font-family: var(--font-cond); font-weight: 700; font-size: 14px; letter-spacing: 1px; border-radius: 999px; color: #fff; }
   .pill-w { background: var(--win); }
@@ -351,7 +355,7 @@
 (function () {
   'use strict';
   const PALETTE = ['#c98a00', '#1f4fd1', '#d42a3c', '#138a4b', '#7c3aed', '#ea580c', '#db2777', '#0e9488'];
-  const S = { lbView: 'bucket', meta: null, days: [], q: [], questions: [], tab: 'overview', period: 'week', players: new Set(), range: '30', focus: null, open: { bests: false, hof: false, bench: false, results: false } };
+  const S = { league: 'all', lbView: 'bucket', meta: null, days: [], q: [], questions: [], tab: 'overview', period: 'week', players: new Set(), range: '30', focus: null, open: { bests: false, hof: false, bench: false, results: false } };
   const charts = {};
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -365,15 +369,24 @@
   const mean = (a) => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
   const sd = (a) => { if (a.length < 2) return null; const m = mean(a); return Math.sqrt(a.reduce((s, x) => s + (x - m) ** 2, 0) / (a.length - 1)); };
 
+  try { const l = localStorage.getItem('gs-league'); if (['regular', 'part', 'rookie'].includes(l)) S.league = l; } catch (e) {}
   try { const t = localStorage.getItem('gs-tab'); if (t === 'player' || t === 'questions') S.tab = t; } catch (e) {}
 
   // ---------- Model ----------
-  function model() {
+  function model(league) {
     const m = S.meta;
-    const members = [...(m.members || [])].sort((a, b) => (b.alltime?.avg ?? -1) - (a.alltime?.avg ?? -1))
+    let members = [...(m.members || [])].sort((a, b) => (b.alltime?.avg ?? -1) - (a.alltime?.avg ?? -1))
       .map((p, i) => ({ ...p, color: PALETTE[i % PALETTE.length] }));
+    let days = [...S.days].filter((d) => d && d.date).sort((a, b) => a.date < b.date ? -1 : 1);
+    if (league && league !== 'all') {
+      // A league view only sees its own players: days won, streak wins and records are counted inside the league.
+      const keepP = members.filter((p) => p.bucket === league), keep = new Set(keepP.map((p) => p.userId)), orig = Object.fromEntries(keepP.map((p) => [p.userId, p]));
+      days = days.map((d) => ({ ...d, scores: Object.fromEntries(Object.entries(d.scores || {}).filter(([id]) => keep.has(id))) })).filter((d) => Object.keys(d.scores).length);
+      members = computeStats(keepP.map((p) => ({ userId: p.userId, name: p.name, role: p.role, memberSince: p.memberSince })), days, m.date)
+        .map((p) => ({ ...p, color: orig[p.userId].color, bucket: league, share: orig[p.userId].share }))
+        .sort((a, b) => (b.alltime?.avg ?? -1) - (a.alltime?.avg ?? -1));
+    }
     const byId = Object.fromEntries(members.map((p) => [p.userId, p]));
-    const days = [...S.days].filter((d) => d && d.date).sort((a, b) => a.date < b.date ? -1 : 1);
     const complete = days.filter((d) => d.complete).map((d) => {
       const e = Object.entries(d.scores || {}).filter(([id, v]) => v != null && byId[id]).sort((a, b) => b[1] - a[1]);
       const top = e.length ? e[0][1] : null;
@@ -384,7 +397,7 @@
     members.forEach((p) => { series[p.userId] = days.filter((d) => d.scores && d.scores[p.userId] != null).map((d) => ({ date: d.date, score: d.scores[p.userId] })); });
     const asOf = m.date || (days.length ? days[days.length - 1].date : new Date().toISOString().slice(0, 10));
     const recent = (uid, n) => series[uid].filter((x) => x.date > addDays(asOf, -n)).map((x) => x.score);
-    return { m, members, byId, days, complete, series, asOf, recent, me: m.currentUserId };
+    return { m, members, byId, days, complete, series, asOf, recent, me: m.currentUserId, league: league || 'all' };
   }
 
   // ---------- Render shell ----------
@@ -400,8 +413,17 @@
     setUpdated();
     Object.values(charts).forEach((c) => c.destroy()); for (const k in charts) delete charts[k];
     if (S.tab === 'questions') { $('app').innerHTML = questionsTabHTML(); return; }
-    $('app').innerHTML = S.tab === 'overview' ? overviewHTML(M) : playerHTML(M);
-    if (S.tab === 'overview') overviewCharts(M); else playerCharts(M);
+    if (S.tab === 'overview') {
+      // A league with nobody in it right now falls back to the full group.
+      if (S.league !== 'all' && !M.members.some((p) => p.bucket === S.league)) S.league = 'all';
+      VIEW_LEAGUE = S.league;
+      const LM = S.league === 'all' ? M : model(S.league);
+      $('app').innerHTML = leagueSwitcher(M) + overviewHTML(LM);
+      overviewCharts(LM); VIEW_LEAGUE = 'all';
+      return;
+    }
+    $('app').innerHTML = playerHTML(M);
+    playerCharts(M);
   }
 
   // Exact time of the last sheet refresh, to the minute, in the viewer's own time zone.
@@ -424,13 +446,14 @@
   // Buckets: share of days played since the season started (recalculated on every load).
   // Regulars 75%+ of days, Part-timers 25% to 75%, Rookies under 25%. Rookies aren't ranked by average.
   const BUCKETS = [
-    { key: 'regular', label: 'Regulars', short: 'Regular', rule: '75%+ of days' },
-    { key: 'part', label: 'Part-timers', short: 'Part-timer', rule: '25% to 75% of days' },
-    { key: 'rookie', label: 'Rookies', short: 'Rookie', rule: 'under 25% of days' },
+    { key: 'regular', label: 'Regulars League', name: 'Regulars', short: 'Regular', rule: '75%+ of days' },
+    { key: 'part', label: 'Part-timers League', name: 'Part-timers', short: 'Part-timer', rule: '25% to 75% of days' },
+    { key: 'rookie', label: 'Rookies League', name: 'Rookies', short: 'Rookie', rule: 'under 25% of days' },
   ];
   const bucketOf = (games, seasonDays) => { const s = seasonDays ? games / seasonDays : 0; return s >= 0.75 ? 'regular' : s >= 0.25 ? 'part' : 'rookie'; };
   const B_INFO = Object.fromEntries(BUCKETS.map((b) => [b.key, b]));
-  const qualifies = (p) => (p.alltime?.games || 0) > 0 && p.bucket !== 'rookie';
+  let VIEW_LEAGUE = 'all';
+  const qualifies = (p) => (p.alltime?.games || 0) > 0 && (VIEW_LEAGUE !== 'all' || p.bucket !== 'rookie');
   const badge = (p) => `<span class="bucket b-${p.bucket}" title="${B_INFO[p.bucket].label}: played ${B_INFO[p.bucket].rule}">${B_INFO[p.bucket].short}</span>`;
 
   function overviewHTML(M) {
@@ -504,7 +527,7 @@
       ${listSection('bench', 'bench', 'You’re Benched!', bottom, `The ${nList === 1 ? 'worst single round' : nList + ' worst single rounds'} since the season started. Tied scores are listed by date, earliest first.`)}
 
       <h2 class="section-title">Season Totals</h2>
-      <p class="section-sub">Calculated from every round since the season started on ${esc(fmtDate(M.m.start, { month: 'long', day: 'numeric' }))}. Not affected by filters.</p>
+      <p class="section-sub">Calculated from every round since the season started on ${esc(fmtDate(M.m.start, { month: 'long', day: 'numeric' }))}${M.league === 'all' ? '' : `, counting only the ${B_INFO[M.league].label}`}.</p>
       <div class="metric-grid">
         ${seasonTiles(M)}
       </div>
@@ -513,21 +536,21 @@
 
       <section class="card">
         <div class="filter-label">Leaderboard</div>
-        <p class="sub">Week, month and season rank by average score, the same way GeoSports does, so a missed day doesn’t sink you. Month and season group players by how often they play: Regulars (75%+ of days), Part-timers (25% to 75%) and Rookies (under 25%). Click a player for their full breakdown.</p>
+        <p class="sub">Week, month and season rank by average score, the same way GeoSports does, so a missed day doesn’t sink you. Month and season split players into leagues by how often they play: Regulars (75%+ of days), Part-timers (25% to 75%) and Rookies (under 25%). Click a player for their full breakdown.</p>
         <div class="chips" style="margin-bottom:12px">${periodChip('today', 'Today')}${periodChip('week', 'This week')}${periodChip('month', 'This month')}${periodChip('alltime', 'Season')}</div>
-        ${S.period === 'month' || S.period === 'alltime' ? `<div class="chips" style="margin:-4px 0 12px"><button type="button" class="chip${S.lbView === 'bucket' ? ' active' : ''}" data-lbview="bucket">By bucket</button><button type="button" class="chip${S.lbView === 'overall' ? ' active' : ''}" data-lbview="overall">Overall</button></div>` : ''}
+        ${M.league === 'all' && (S.period === 'month' || S.period === 'alltime') ? `<div class="chips" style="margin:-4px 0 12px"><button type="button" class="chip${S.lbView === 'bucket' ? ' active' : ''}" data-lbview="bucket">By league</button><button type="button" class="chip${S.lbView === 'overall' ? ' active' : ''}" data-lbview="overall">Overall</button></div>` : ''}
         <div class="scroll-table flat">${leaderboardTable(M)}</div>
       </section>
 
       <div class="row2">
         <section class="card">
           <h3>Days won</h3>
-          <p class="sub">Daily wins per player this season.</p>
+          <p class="sub">${M.league === 'all' ? 'Daily wins per player this season.' : 'Days each player had the top score in the league this season.'}</p>
           <div class="chart-wrap" style="height:280px"><canvas id="c-wins" role="img" aria-label="Days won per player"></canvas></div>
         </section>
         <section class="card">
           <h3>Average score</h3>
-          <p class="sub">Season average per player, highest first. Rookies (under 25% of days played) aren’t shown${members.some((p) => p.alltime?.games && !qualifies(p)) ? `: ${members.filter((p) => p.alltime?.games && !qualifies(p)).map((p) => esc(p.name)).join(', ')}` : ''}.</p>
+          <p class="sub">Season average per player, highest first.${M.league !== 'all' ? '' : ` Rookies (under 25% of days played) aren’t shown${members.some((p) => p.alltime?.games && !qualifies(p)) ? `: ${members.filter((p) => p.alltime?.games && !qualifies(p)).map((p) => esc(p.name)).join(', ')}` : ''}.`}</p>
           <div class="chart-wrap" style="height:280px"><canvas id="c-avg" role="img" aria-label="Season average score per player, highest first"></canvas></div>
         </section>
       </div>
@@ -611,7 +634,7 @@
       </div>`;
     };
     const lanes = racers.map((x) => lane(esc(x.p.name), x.p.color, x.miles, `${fmt(x.miles)} mi · ${pl(x.rounds, 'round')}`, false, x.pace, x.last)).join('')
-      + (racers.length > 1 ? lane('Whole group', 'var(--navy)', team, `${fmt(team)} mi combined`, true, teamPace, teamLast) : '');
+      + (racers.length > 1 ? lane(M.league === 'all' ? 'Whole group' : 'Whole league', 'var(--navy)', team, `${fmt(team)} mi combined`, true, teamPace, teamLast) : '');
     const laps = racers.map((x) => `<div class="lap"><span class="dot" style="background:${x.p.color}"></span><span class="lap-name">${esc(x.p.name)}</span><b>${fmt(x.miles / DIST.earth, 1)}</b><span class="dim">laps</span></div>`).join('');
     return intro + `<section class="card space">
         <h3>Race to the Moon</h3>
@@ -625,9 +648,20 @@
           ${orbitHTML()}
           <div>
             <div class="laps">${laps}</div>
-            ${racers.length > 1 ? `<p class="sub" style="margin:12px 0 0">Together the group has missed its way around the planet <b>${fmt(team / DIST.earth, 1)}</b> times.</p>` : ''}
+            ${racers.length > 1 ? `<p class="sub" style="margin:12px 0 0">Together the ${M.league === 'all' ? 'group' : 'league'} has missed its way around the planet <b>${fmt(team / DIST.earth, 1)}</b> times.</p>` : ''}
           </div>
         </div>
+      </section>`;
+  }
+
+  function leagueSwitcher(M) {
+    const n = (k) => M.members.filter((p) => p.bucket === k).length;
+    const chip = (k, label, count) => `<button type="button" class="chip league-chip${S.league === k ? ' active' : ''}" data-league="${k}">${label}<span class="n">×${count}</span></button>`;
+    const cur = B_INFO[S.league];
+    return `<section class="card league-bar${S.league === 'all' ? '' : ' lg-' + S.league}">
+        <div class="filter-label">League</div>
+        <div class="chips">${chip('all', 'All players', M.members.length)}${BUCKETS.map((b) => chip(b.key, b.label, n(b.key))).join('')}</div>
+        <p class="sub" style="margin:10px 0 0">${cur ? `Showing the <b>${cur.label}</b>: players who have played ${cur.rule} since the season started. Every report below, from the Record Book to the Space Race, only counts these players, so days won and records are within the league.` : 'Showing everyone. Pick a league to see its own standings, records, charts and Space Race. Leagues are set by the share of days played since the season started and update every day.'}</p>
       </section>`;
   }
 
@@ -648,10 +682,10 @@
     const lateJoiners = members.filter((p) => p.memberSince && days.length && p.memberSince > days[0].date).length;
     const tile = (label, value, who, sub, cls) => `<div class="metric-card ${cls || ''}"><p class="metric-label">${label}</p><p class="metric-value">${value}</p>${who ? `<p class="metric-who">${who}</p>` : ''}<p class="metric-sub">${sub}</p></div>`;
     return [
-      ...BUCKETS.map((b, i) => { const inB = members.filter((p) => p.bucket === b.key && p.alltime?.games > 0); const top = inB.length ? Math.max(...inB.map((p) => p.alltime.avg)) : null; const who = inB.filter((p) => p.alltime.avg === top);
-        return tile(`${b.label} leader`, fmt(top), who.length ? names(who) : '—', who.length ? `season avg · ${who.length === 1 ? pl(who[0].alltime.games, 'round') : 'tied'} · played ${b.rule}` : `no ${b.label.toLowerCase()} yet`, i === 0 ? 'tile-lead' : ''); }),
-      tile('Needs to step it up', fmt(lo), played.length > 1 ? names(trailers) : '—', played.length > 1 ? `lowest season avg · ${trailers.length === 1 ? pl(trailers[0].alltime.games, 'round') : 'tied'} · Rookies not counted` : 'needs 2+ Regulars or Part-timers', 'tile-low'),
-      tile('Group average', fmt(mean(all)), '', `per round, all ${pl(all.length, 'round')}`),
+      ...BUCKETS.filter((b) => M.league === 'all' || b.key === M.league).map((b, i) => { const inB = members.filter((p) => p.bucket === b.key && p.alltime?.games > 0); const top = inB.length ? Math.max(...inB.map((p) => p.alltime.avg)) : null; const who = inB.filter((p) => p.alltime.avg === top);
+        return tile(`${b.label} leader`, fmt(top), who.length ? names(who) : '—', who.length ? `season avg · ${who.length === 1 ? pl(who[0].alltime.games, 'round') : 'tied'} · played ${b.rule}` : `no ${b.name.toLowerCase()} yet`, i === 0 ? 'tile-lead' : ''); }),
+      tile('Needs to step it up', fmt(lo), played.length > 1 ? names(trailers) : '—', played.length > 1 ? `lowest season avg · ${trailers.length === 1 ? pl(trailers[0].alltime.games, 'round') : 'tied'}${M.league === 'all' ? ' · Rookies not counted' : ' in the league'}` : (M.league === 'all' ? 'needs 2+ Regulars or Part-timers' : 'needs 2+ players in the league'), 'tile-low'),
+      tile(M.league === 'all' ? 'Group average' : 'League average', fmt(mean(all)), '', `per round, all ${pl(all.length, 'round')}`),
       tile('7-day leader', fmt(hi7), lead7.length ? lead7.map((x) => esc(x.p.name)).join(' & ') : '—', lead7.length ? `avg over the last 7 days · ${lead7.length === 1 ? pl(lead7[0].n, 'round') : 'tied'}` : 'no rounds in the last 7 days'),
     ].join('');
   }
@@ -677,10 +711,10 @@
     } else rows = M.members.map((p) => ({ p, v: p[S.period]?.avg ?? null, g: p[S.period]?.games || 0, w: p[S.period]?.won ?? 0 }));
     // Today and this week rank everyone who played. Month and season either group players into buckets
     // (ranked within each bucket) or show one overall list with Rookies listed underneath, unranked.
-    const grouped = S.period === 'month' || S.period === 'alltime';
+    const grouped = M.league === 'all' && (S.period === 'month' || S.period === 'alltime');
     const groups = !grouped ? [{ head: null, rows, ranked: true }]
       : S.lbView === 'bucket' ? BUCKETS.map((b) => ({ head: `${b.label} · played ${b.rule}`, rows: rows.filter((r) => r.p.bucket === b.key), ranked: true }))
-      : [{ head: null, rows: rows.filter((r) => r.p.bucket !== 'rookie'), ranked: true }, { head: 'Rookies · played under 25% of days, not ranked yet', rows: rows.filter((r) => r.p.bucket === 'rookie'), ranked: false }];
+      : [{ head: null, rows: rows.filter((r) => r.p.bucket !== 'rookie'), ranked: true }, { head: 'Rookies League · played under 25% of days, not ranked yet', rows: rows.filter((r) => r.p.bucket === 'rookie'), ranked: false }];
     const body = groups.filter((g) => g.rows.length).map((g) => {
       g.rows.sort((a, b) => (b.v ?? -1) - (a.v ?? -1));
       let rank = 0, prev = null;
@@ -816,7 +850,7 @@
       </section>
 
       <h2 class="section-title">${esc(p.name)} · ${p.role === 'owner' ? 'Group owner' : 'Member'} ${badge(p)}</h2>
-      <p class="section-sub">Joined ${p.memberSince ? fmtDate(p.memberSince, { month: 'long', day: 'numeric', year: 'numeric' }) : '—'}. Stats cover ${pl(s.length, 'round')} since the season started on ${esc(fmtDate(M.m.start))}, ${fmt(100 * p.share, 0)}% of the season’s ${fmt(M.m.seasonDays)} days, which makes them a ${B_INFO[p.bucket].short}.</p>
+      <p class="section-sub">Joined ${p.memberSince ? fmtDate(p.memberSince, { month: 'long', day: 'numeric', year: 'numeric' }) : '—'}. Stats cover ${pl(s.length, 'round')} since the season started on ${esc(fmtDate(M.m.start))}, ${fmt(100 * p.share, 0)}% of the season’s ${fmt(M.m.seasonDays)} days, which puts them in the ${B_INFO[p.bucket].label}.</p>
       <div class="metric-grid four">
         ${metric('Season avg', fmt(at.avg), (() => { if (p.bucket === 'rookie' || at.avg == null) return 'Rookie · not ranked yet'; const peers = M.members.filter((x) => x.bucket === p.bucket && x.alltime?.avg != null).sort((x, y) => y.alltime.avg - x.alltime.avg); return `#${peers.findIndex((x) => x.userId === p.userId) + 1} of the ${B_INFO[p.bucket].label}`; })())}
         ${metric('Rounds played', fmt(at.games), `since ${fmtDate(M.m.start)}`)}
@@ -1013,9 +1047,10 @@
 
   // ---------- Events ----------
   document.addEventListener('click', (e) => {
-    const t = e.target.closest('[data-lbview],[data-tab],[data-period],[data-range],[data-player],[data-focus],[data-col] > .card-toggle');
+    const t = e.target.closest('[data-league],[data-lbview],[data-tab],[data-period],[data-range],[data-player],[data-focus],[data-col] > .card-toggle');
     if (!t) return;
-    if (t.dataset.lbview) S.lbView = t.dataset.lbview;
+    if (t.dataset.league) { S.league = t.dataset.league; try { localStorage.setItem('gs-league', S.league); } catch (x) {} }
+    else if (t.dataset.lbview) S.lbView = t.dataset.lbview;
     else if (t.dataset.tab) { S.tab = t.dataset.tab; try { localStorage.setItem('gs-tab', S.tab); } catch (x) {} }
     else if (t.dataset.period) S.period = t.dataset.period;
     else if (t.dataset.range) S.range = t.dataset.range;
