@@ -364,7 +364,7 @@
 (function () {
   'use strict';
   const PALETTE = ['#c98a00', '#1f4fd1', '#d42a3c', '#138a4b', '#7c3aed', '#ea580c', '#db2777', '#0e9488'];
-  const S = { league: 'all', lbView: 'bucket', meta: null, days: [], q: [], questions: [], tab: 'overview', period: 'week', players: new Set(), range: '30', focus: null, open: { bests: false, hof: false, bench: false, results: false } };
+  const S = { league: 'all', meta: null, days: [], q: [], questions: [], tab: 'overview', period: 'week', players: new Set(), range: '30', focus: null, open: { bests: false, hof: false, bench: false, results: false } };
   const charts = {};
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -553,7 +553,7 @@
         <div class="filter-label">Leaderboard</div>
         <p class="sub">Ranked by average score, the same way GeoSports does, so a missed day doesn’t sink you. Players are grouped into leagues by how often they play, and days won only count wins within your own league. Click a player for their full breakdown.</p>
         <div class="chips" style="margin-bottom:12px">${periodChip('today', 'Today')}${periodChip('week', 'This week')}${periodChip('month', 'This month')}${periodChip('alltime', 'Season')}</div>
-        ${M.league === 'all' && (S.period === 'month' || S.period === 'alltime') ? `<div class="chips" style="margin:-4px 0 12px"><button type="button" class="chip${S.lbView === 'bucket' ? ' active' : ''}" data-lbview="bucket">By league</button><button type="button" class="chip${S.lbView === 'overall' ? ' active' : ''}" data-lbview="overall">Overall</button></div>` : ''}
+        
         <div class="scroll-table flat">${leaderboardTable(M)}</div>
       </section>
 
@@ -725,10 +725,9 @@
     } else rows = M.members.map((p) => ({ p, v: p[S.period]?.avg ?? null, g: p[S.period]?.games || 0, w: p[S.period]?.won ?? 0 }));
     // Today and this week rank everyone who played. Month and season either group players into buckets
     // (ranked within each bucket) or show one overall list with Rookies listed underneath, unranked.
-    const grouped = M.league === 'all' && !((S.period === 'month' || S.period === 'alltime') && S.lbView === 'overall');
+    const grouped = M.league === 'all';
     const groups = !grouped ? [{ head: null, rows, ranked: true }]
-      : S.lbView === 'bucket' || !(S.period === 'month' || S.period === 'alltime') ? BUCKETS.map((b) => ({ head: `${b.label} · played ${b.rule}`, rows: rows.filter((r) => r.p.bucket === b.key), ranked: true }))
-      : [{ head: null, rows: rows.filter((r) => r.p.bucket !== 'rookie'), ranked: true }, { head: 'Youth League · played under 25% of days, not ranked yet', rows: rows.filter((r) => r.p.bucket === 'rookie'), ranked: false }];
+      : BUCKETS.map((b) => ({ head: `${b.label} · played ${b.rule}`, rows: rows.filter((r) => r.p.bucket === b.key), ranked: true }));
     const body = groups.filter((g) => g.rows.length).map((g) => {
       g.rows.sort((a, b) => (b.v ?? -1) - (a.v ?? -1));
       let rank = 0, prev = null;
@@ -1152,10 +1151,9 @@
 
   // ---------- Events ----------
   document.addEventListener('click', (e) => {
-    const t = e.target.closest('[data-league],[data-lbview],[data-tab],[data-period],[data-range],[data-player],[data-focus],[data-col] > .card-toggle');
+    const t = e.target.closest('[data-league],[data-tab],[data-period],[data-range],[data-player],[data-focus],[data-col] > .card-toggle');
     if (!t) return;
     if (t.dataset.league) { S.league = t.dataset.league; try { localStorage.setItem('gs-league', S.league); } catch (x) {} }
-    else if (t.dataset.lbview) S.lbView = t.dataset.lbview;
     else if (t.dataset.tab) { S.tab = t.dataset.tab; try { localStorage.setItem('gs-tab', S.tab); } catch (x) {} }
     else if (t.dataset.period) S.period = t.dataset.period;
     else if (t.dataset.range) S.range = t.dataset.range;
