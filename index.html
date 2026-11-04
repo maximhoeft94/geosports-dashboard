@@ -156,6 +156,7 @@
 
   /* Charts + tables */
   .row2 { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 16px; }
+  .row2.row-full { grid-template-columns: minmax(0,1fr); }
   .row2 > .card { margin-bottom: 0; }
   .row2 + * { margin-top: 16px; }
   .chart-wrap { position: relative; width: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
@@ -263,7 +264,7 @@
     .space table th:first-child, .space table td:first-child { padding-left: 8px; }
   }
   tr.prov td { color: var(--muted); }
-  tr.prov-head td { background: var(--field); color: var(--muted); font-size: 13px; font-weight: 600; letter-spacing: .3px; padding: 6px 12px; }
+  tr.prov-head td { border-top: 3px solid var(--navy); text-transform: uppercase; color: var(--navy) !important; font-family: var(--font-cond); font-size: 14px !important; font-weight: 700 !important; letter-spacing: 1px !important; background: var(--field); color: var(--muted); font-size: 13px; font-weight: 600; letter-spacing: .3px; padding: 6px 12px; }
   .tile-miles { box-shadow: inset 0 3px 0 var(--red), var(--shadow); }
   @media (max-width: 720px) { .q-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   .q-search { width: 100%; box-sizing: border-box; padding: 10px 14px; border: 1px solid var(--line-strong); border-radius: 999px; font: inherit; color: var(--ink); background: #fff; }
@@ -446,9 +447,9 @@
   // Buckets: share of days played since the season started (recalculated on every load).
   // Regulars 75%+ of days, Part-timers 25% to 75%, Rookies under 25%. Rookies aren't ranked by average.
   const BUCKETS = [
-    { key: 'regular', label: 'Regulars League', name: 'Regulars', short: 'Regular', rule: '75%+ of days' },
-    { key: 'part', label: 'Part-timers League', name: 'Part-timers', short: 'Part-timer', rule: '25% to 75% of days' },
-    { key: 'rookie', label: 'Rookies League', name: 'Rookies', short: 'Rookie', rule: 'under 25% of days' },
+    { key: 'regular', label: 'Major League', name: 'Major League', short: 'Major', rule: '75%+ of days' },
+    { key: 'part', label: 'Minor League', name: 'Minor League', short: 'Minor', rule: '25% to 75% of days' },
+    { key: 'rookie', label: 'Youth League', name: 'Youth League', short: 'Youth', rule: 'under 25% of days' },
   ];
   const bucketOf = (games, seasonDays) => { const s = seasonDays ? games / seasonDays : 0; return s >= 0.75 ? 'regular' : s >= 0.25 ? 'part' : 'rookie'; };
   const B_INFO = Object.fromEntries(BUCKETS.map((b) => [b.key, b]));
@@ -536,22 +537,22 @@
 
       <section class="card">
         <div class="filter-label">Leaderboard</div>
-        <p class="sub">Week, month and season rank by average score, the same way GeoSports does, so a missed day doesn’t sink you. Month and season split players into leagues by how often they play: Regulars (75%+ of days), Part-timers (25% to 75%) and Rookies (under 25%). Click a player for their full breakdown.</p>
+        <p class="sub">Week, month and season rank by average score, the same way GeoSports does, so a missed day doesn’t sink you. Month and season split players into leagues by how often they play: Major League (75%+ of days), Minor League (25% to 75%) and Youth League (under 25%). Click a player for their full breakdown.</p>
         <div class="chips" style="margin-bottom:12px">${periodChip('today', 'Today')}${periodChip('week', 'This week')}${periodChip('month', 'This month')}${periodChip('alltime', 'Season')}</div>
         ${M.league === 'all' && (S.period === 'month' || S.period === 'alltime') ? `<div class="chips" style="margin:-4px 0 12px"><button type="button" class="chip${S.lbView === 'bucket' ? ' active' : ''}" data-lbview="bucket">By league</button><button type="button" class="chip${S.lbView === 'overall' ? ' active' : ''}" data-lbview="overall">Overall</button></div>` : ''}
         <div class="scroll-table flat">${leaderboardTable(M)}</div>
       </section>
 
-      <div class="row2">
+      <div class="row2${M.league === 'all' ? ' row-full' : ''}">
         <section class="card">
           <h3>Days won</h3>
-          <p class="sub">${M.league === 'all' ? 'Daily wins per player this season.' : 'Days each player had the top score in the league this season.'}</p>
-          <div class="chart-wrap" style="height:280px"><canvas id="c-wins" role="img" aria-label="Days won per player"></canvas></div>
+          <p class="sub">${M.league === 'all' ? 'Daily wins per player this season, grouped by league.' : 'Days each player had the top score in the league this season.'}</p>
+          <div class="chart-wrap" style="height:${M.league === 'all' ? 360 : 280}px"><canvas id="c-wins" role="img" aria-label="Days won per player"></canvas></div>
         </section>
         <section class="card">
           <h3>Average score</h3>
-          <p class="sub">Season average per player, highest first.${M.league !== 'all' ? '' : ` Rookies (under 25% of days played) aren’t shown${members.some((p) => p.alltime?.games && !qualifies(p)) ? `: ${members.filter((p) => p.alltime?.games && !qualifies(p)).map((p) => esc(p.name)).join(', ')}` : ''}.`}</p>
-          <div class="chart-wrap" style="height:280px"><canvas id="c-avg" role="img" aria-label="Season average score per player, highest first"></canvas></div>
+          <p class="sub">Season average per player, highest first${M.league !== 'all' ? '.' : ' within each league: Major League, then Minor League, then Youth League. Youth League players have only a few rounds, so treat their averages lightly.'}</p>
+          <div class="chart-wrap" style="height:${M.league === 'all' ? 360 : 280}px"><canvas id="c-avg" role="img" aria-label="Season average score per player, highest first"></canvas></div>
         </section>
       </div>
 
@@ -683,8 +684,8 @@
     const tile = (label, value, who, sub, cls) => `<div class="metric-card ${cls || ''}"><p class="metric-label">${label}</p><p class="metric-value">${value}</p>${who ? `<p class="metric-who">${who}</p>` : ''}<p class="metric-sub">${sub}</p></div>`;
     return [
       ...BUCKETS.filter((b) => M.league === 'all' || b.key === M.league).map((b, i) => { const inB = members.filter((p) => p.bucket === b.key && p.alltime?.games > 0); const top = inB.length ? Math.max(...inB.map((p) => p.alltime.avg)) : null; const who = inB.filter((p) => p.alltime.avg === top);
-        return tile(`${b.label} leader`, fmt(top), who.length ? names(who) : '—', who.length ? `season avg · ${who.length === 1 ? pl(who[0].alltime.games, 'round') : 'tied'} · played ${b.rule}` : `no ${b.name.toLowerCase()} yet`, i === 0 ? 'tile-lead' : ''); }),
-      tile('Needs to step it up', fmt(lo), played.length > 1 ? names(trailers) : '—', played.length > 1 ? `lowest season avg · ${trailers.length === 1 ? pl(trailers[0].alltime.games, 'round') : 'tied'}${M.league === 'all' ? ' · Rookies not counted' : ' in the league'}` : (M.league === 'all' ? 'needs 2+ Regulars or Part-timers' : 'needs 2+ players in the league'), 'tile-low'),
+        return tile(`${b.label} leader`, fmt(top), who.length ? names(who) : '—', who.length ? `season avg · ${who.length === 1 ? pl(who[0].alltime.games, 'round') : 'tied'} · played ${b.rule}` : `no ${b.name} players yet`, i === 0 ? 'tile-lead' : ''); }),
+      tile('Needs to step it up', fmt(lo), played.length > 1 ? names(trailers) : '—', played.length > 1 ? `lowest season avg · ${trailers.length === 1 ? pl(trailers[0].alltime.games, 'round') : 'tied'}${M.league === 'all' ? ' · Youth League not counted' : ' in the league'}` : (M.league === 'all' ? 'needs 2+ Major or Minor League players' : 'needs 2+ players in the league'), 'tile-low'),
       tile(M.league === 'all' ? 'Group average' : 'League average', fmt(mean(all)), '', `per round, all ${pl(all.length, 'round')}`),
       tile('7-day leader', fmt(hi7), lead7.length ? lead7.map((x) => esc(x.p.name)).join(' & ') : '—', lead7.length ? `avg over the last 7 days · ${lead7.length === 1 ? pl(lead7[0].n, 'round') : 'tied'}` : 'no rounds in the last 7 days'),
     ].join('');
@@ -711,10 +712,10 @@
     } else rows = M.members.map((p) => ({ p, v: p[S.period]?.avg ?? null, g: p[S.period]?.games || 0, w: p[S.period]?.won ?? 0 }));
     // Today and this week rank everyone who played. Month and season either group players into buckets
     // (ranked within each bucket) or show one overall list with Rookies listed underneath, unranked.
-    const grouped = M.league === 'all' && (S.period === 'month' || S.period === 'alltime');
+    const grouped = M.league === 'all' && !((S.period === 'month' || S.period === 'alltime') && S.lbView === 'overall');
     const groups = !grouped ? [{ head: null, rows, ranked: true }]
-      : S.lbView === 'bucket' ? BUCKETS.map((b) => ({ head: `${b.label} · played ${b.rule}`, rows: rows.filter((r) => r.p.bucket === b.key), ranked: true }))
-      : [{ head: null, rows: rows.filter((r) => r.p.bucket !== 'rookie'), ranked: true }, { head: 'Rookies League · played under 25% of days, not ranked yet', rows: rows.filter((r) => r.p.bucket === 'rookie'), ranked: false }];
+      : S.lbView === 'bucket' || !(S.period === 'month' || S.period === 'alltime') ? BUCKETS.map((b) => ({ head: `${b.label} · played ${b.rule}`, rows: rows.filter((r) => r.p.bucket === b.key), ranked: true }))
+      : [{ head: null, rows: rows.filter((r) => r.p.bucket !== 'rookie'), ranked: true }, { head: 'Youth League · played under 25% of days, not ranked yet', rows: rows.filter((r) => r.p.bucket === 'rookie'), ranked: false }];
     const body = groups.filter((g) => g.rows.length).map((g) => {
       g.rows.sort((a, b) => (b.v ?? -1) - (a.v ?? -1));
       let rank = 0, prev = null;
@@ -763,29 +764,64 @@
   function overviewCharts(M) {
     if (!window.Chart) return;
     const shown = M.members;
-    const wins = [...shown].sort((a, b) => (b.alltime?.won || 0) - (a.alltime?.won || 0));
+    const LORD = { regular: 0, part: 1, rookie: 2 };
+    // Chart rows grouped by league with a spacer row/column at each league change (and, for horizontal charts, before the first).
+    const byLeague = (list, val, leadSpacer) => { const out = []; let prev = null;
+      [...list].sort((a, b) => (LORD[a.bucket] - LORD[b.bucket]) || (val(b) - val(a))).forEach((p) => {
+        if (M.league === 'all' && p.bucket !== prev) { if (leadSpacer || prev !== null) out.push({ head: p.bucket }); prev = p.bucket; }
+        out.push({ p }); });
+      return out; };
+    // Draws a dashed divider and the league name in each spacer row/column.
+    const leagueRows = { id: 'leagueRows', afterDatasetsDraw(chart) {
+      const items = chart.options.leagueItems; if (!items || M.league !== 'all') return;
+      const horiz = chart.options.indexAxis === 'y', sc = horiz ? chart.scales.y : chart.scales.x, { ctx, chartArea: a } = chart;
+      ctx.save(); ctx.font = "700 13px 'Barlow Condensed', sans-serif"; ctx.textBaseline = 'middle';
+      const line = (x1, y1, x2, y2) => { ctx.save(); ctx.strokeStyle = 'rgba(19,48,107,0.6)'; ctx.lineWidth = 2; ctx.setLineDash([7, 5]); ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); ctx.restore(); };
+      items.forEach((it, i) => {
+        if (!it.head) return; const c = sc.getPixelForValue(i), label = B_INFO[it.head].label.toUpperCase();
+        if (horiz) { line(4, c, chart.width - 4, c); const w = ctx.measureText(label).width; ctx.fillStyle = '#fff'; ctx.fillRect(8, c - 9, w + 12, 18); ctx.fillStyle = '#13306b'; ctx.textAlign = 'left'; ctx.fillText(label, 14, c + 1); }
+        else line(c, a.top - 22, c, a.bottom);
+      });
+      if (!horiz) { // league names centred over each group of columns
+        let s = 0; const flush = (e) => { const g = items.slice(s, e).filter((x) => x.p); if (!g.length) return; const x1 = sc.getPixelForValue(s + (items[s].head ? 1 : 0)), x2 = sc.getPixelForValue(e - 1);
+          ctx.fillStyle = '#13306b'; ctx.textAlign = 'center'; ctx.fillText(B_INFO[g[0].p.bucket].label.toUpperCase(), (x1 + x2) / 2, a.top - 14); };
+        items.forEach((it, i) => { if (it.head && i > 0) { flush(i); s = i; } }); flush(items.length);
+      }
+      ctx.restore(); } };
+    const winItems = byLeague(shown, (p) => p.alltime?.won || 0, true);
+    const wins = winItems.map((x) => x.p);
     // Writes each horizontal bar's value just past its end.
     const endLabels = { id: 'endLabels', afterDatasetsDraw(chart) {
       const { ctx } = chart; ctx.save(); ctx.fillStyle = '#0e1f3f'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
       ctx.font = "600 20px 'Teko', 'Barlow Condensed', sans-serif";
-      chart.getDatasetMeta(0).data.forEach((bar, i) => ctx.fillText(fmt(chart.data.datasets[0].data[i]), bar.x + 6, bar.y + 1));
+      chart.getDatasetMeta(0).data.forEach((bar, i) => { const v = chart.data.datasets[0].data[i]; if (v != null) ctx.fillText(fmt(v), bar.x + 6, bar.y + 1); });
       ctx.restore(); } };
-    charts.wins = new Chart($('c-wins'), { type: 'bar', data: { labels: wins.map((p) => p.name), datasets: [{ data: wins.map((p) => p.alltime?.won || 0), backgroundColor: wins.map((p) => p.color + 'b3'), borderColor: wins.map((p) => p.color), borderWidth: 1 }] },
-      plugins: [endLabels],
-      options: baseOpts({ indexAxis: 'y', layout: { padding: { right: 30 } },
+    charts.wins = new Chart($('c-wins'), { type: 'bar', data: { labels: wins.map((p) => p ? p.name : ''), datasets: [{ data: wins.map((p) => p ? (p.alltime?.won || 0) : null), backgroundColor: wins.map((p) => p ? p.color + 'b3' : 'transparent'), borderColor: wins.map((p) => p ? p.color : 'transparent'), borderWidth: 1 }] },
+      plugins: [endLabels, leagueRows],
+      options: baseOpts({ indexAxis: 'y', leagueItems: winItems, layout: { padding: { right: 30 } },
         scales: { x: { display: false, beginAtZero: true }, y: { grid: { display: false }, border: { display: false }, ticks: { color: '#0e1f3f', font: { family: "'Barlow Condensed', sans-serif", size: 13, weight: 600 } } } },
         plugins: { legend: { display: false }, tooltip: baseOpts().plugins.tooltip } }) });
 
-    const avgs = shown.filter(qualifies).sort((a, b) => b.alltime.avg - a.alltime.avg);
+    // Youth League is shown too, after its own divider, so nobody's average is hidden.
+    const narrowAvg = $('c-avg').parentElement.clientWidth < 560;
+    const avgItems = byLeague(shown.filter((p) => p.alltime?.games > 0), (p) => p.alltime.avg, narrowAvg);
+    const avgs = avgItems.map((x) => x.p);
+    if (narrowAvg) { // phones: horizontal bars, same layout as Days won
+      charts.avg = new Chart($('c-avg'), { type: 'bar', plugins: [endLabels, leagueRows], data: { labels: avgs.map((p) => p ? p.name : ''), datasets: [{ data: avgs.map((p) => p ? Math.round(p.alltime.avg) : null), backgroundColor: avgs.map((p) => p ? p.color + 'b3' : 'transparent'), borderColor: avgs.map((p) => p ? p.color : 'transparent'), borderWidth: 1 }] },
+        options: baseOpts({ indexAxis: 'y', leagueItems: avgItems, layout: { padding: { right: 40 } },
+          scales: { x: { display: false, min: 0, max: 1000 }, y: { grid: { display: false }, border: { display: false }, ticks: { color: '#0e1f3f', font: { family: "'Barlow Condensed', sans-serif", size: 13, weight: 600 } } } },
+          plugins: { legend: { display: false }, tooltip: baseOpts().plugins.tooltip } }) });
+      return;
+    }
     // Draws each bar's value just above it.
     const valueLabels = { id: 'valueLabels', afterDatasetsDraw(chart) {
       const { ctx } = chart; ctx.save(); ctx.fillStyle = '#0e1f3f'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
       ctx.font = "600 22px 'Teko', 'Barlow Condensed', sans-serif";
-      chart.getDatasetMeta(0).data.forEach((bar, i) => ctx.fillText(fmt(chart.data.datasets[0].data[i]), bar.x, bar.y - 4));
+      chart.getDatasetMeta(0).data.forEach((bar, i) => { const v = chart.data.datasets[0].data[i]; if (v != null) ctx.fillText(fmt(v), bar.x, bar.y - 4); });
       ctx.restore(); } };
-    charts.avg = new Chart($('c-avg'), { type: 'bar', plugins: [valueLabels], data: { labels: avgs.map((p) => p.name), datasets: [{ data: avgs.map((p) => Math.round(p.alltime.avg)), backgroundColor: avgs.map((p) => p.color + 'b3'), borderColor: avgs.map((p) => p.color), borderWidth: 1, maxBarThickness: 64 }] },
-      options: baseOpts({ layout: { padding: { top: 26 } }, scales: { y: { display: false, min: 0, max: 1000 }, x: { grid: { display: false }, border: { display: false }, ticks: { color: '#0e1f3f', maxRotation: 0, autoSkip: false, font: { family: "'Barlow Condensed', sans-serif", size: 13, weight: 700 }, callback: function (v) { const n = this.getLabelForValue(v); return n.length > 12 ? n.split(' ') : n; } } } },
-        plugins: { legend: { display: false }, tooltip: { ...baseOpts().plugins.tooltip, callbacks: { title: (c) => avgs[c[0].dataIndex].name, label: (c) => `${fmt(avgs[c.dataIndex].alltime.avg)} avg · ${pl(avgs[c.dataIndex].alltime.games, 'round')}` } } } }) });
+    charts.avg = new Chart($('c-avg'), { type: 'bar', plugins: [valueLabels, leagueRows], data: { labels: avgs.map((p) => p ? p.name : ''), datasets: [{ data: avgs.map((p) => p ? Math.round(p.alltime.avg) : null), backgroundColor: avgs.map((p) => p ? p.color + 'b3' : 'transparent'), borderColor: avgs.map((p) => p ? p.color : 'transparent'), borderWidth: 1, maxBarThickness: 64 }] },
+      options: baseOpts({ leagueItems: avgItems, layout: { padding: { top: M.league === 'all' ? 50 : 26 } }, scales: { y: { display: false, min: 0, max: 1000 }, x: { grid: { display: false }, border: { display: false }, ticks: { color: '#0e1f3f', maxRotation: 0, autoSkip: false, font: { family: "'Barlow Condensed', sans-serif", size: 13, weight: 700 }, callback: function (v) { const n = this.getLabelForValue(v); return n.length > 12 ? n.split(' ') : n; } } } },
+        plugins: { legend: { display: false }, tooltip: { ...baseOpts().plugins.tooltip, callbacks: { title: (c) => avgs[c[0].dataIndex]?.name || '', label: (c) => avgs[c.dataIndex] ? `${fmt(avgs[c.dataIndex].alltime.avg)} avg · ${pl(avgs[c.dataIndex].alltime.games, 'round')}` : '' } } } }) });
   }
 
   // ---------- Player analysis ----------
@@ -852,7 +888,7 @@
       <h2 class="section-title">${esc(p.name)} · ${p.role === 'owner' ? 'Group owner' : 'Member'} ${badge(p)}</h2>
       <p class="section-sub">Joined ${p.memberSince ? fmtDate(p.memberSince, { month: 'long', day: 'numeric', year: 'numeric' }) : '—'}. Stats cover ${pl(s.length, 'round')} since the season started on ${esc(fmtDate(M.m.start))}, ${fmt(100 * p.share, 0)}% of the season’s ${fmt(M.m.seasonDays)} days, which puts them in the ${B_INFO[p.bucket].label}.</p>
       <div class="metric-grid four">
-        ${metric('Season avg', fmt(at.avg), (() => { if (p.bucket === 'rookie' || at.avg == null) return 'Rookie · not ranked yet'; const peers = M.members.filter((x) => x.bucket === p.bucket && x.alltime?.avg != null).sort((x, y) => y.alltime.avg - x.alltime.avg); return `#${peers.findIndex((x) => x.userId === p.userId) + 1} of the ${B_INFO[p.bucket].label}`; })())}
+        ${metric('Season avg', fmt(at.avg), (() => { if (p.bucket === 'rookie' || at.avg == null) return 'Youth League · not ranked yet'; const peers = M.members.filter((x) => x.bucket === p.bucket && x.alltime?.avg != null).sort((x, y) => y.alltime.avg - x.alltime.avg); return `#${peers.findIndex((x) => x.userId === p.userId) + 1} of the ${B_INFO[p.bucket].label}`; })())}
         ${metric('Rounds played', fmt(at.games), `since ${fmtDate(M.m.start)}`)}
         ${metric('Days won', fmt(at.won), winRate != null ? `${fmt(winRate, 1)}% win rate` : '—')}
         ${metric('Current streak', fmt(p.currentStreak || 0) + ' d', p.currentStreak ? 'consecutive days' : 'no active streak')}
@@ -969,7 +1005,7 @@
         <div class="metric-card tile-miles"><p class="metric-label">Total miles missed</p><p class="metric-value">${mi(total)}</p><p class="metric-sub">across ${fmt(mine.length)} ${mine.length === 1 ? 'guess' : 'guesses'} in ${pl(days, 'round')}</p></div>
         <div class="metric-card"><p class="metric-label">Miles missed per round</p><p class="metric-value">${mi(perRound)}</p><p class="metric-sub">all 5 guesses added up</p></div>
         <div class="metric-card"><p class="metric-label">Avg miss per guess</p><p class="metric-value">${mi(total / mine.length)}</p><p class="metric-sub">median ${fmt([...mine.map((x) => x.miles)].sort((a, b) => a - b)[Math.floor((mine.length - 1) / 2)], 0)} mi</p></div>
-        <div class="metric-card"><p class="metric-label">Accuracy rank</p>${rank ? `<p class="metric-value">#${rank}<span class="of"> of ${sharers.length}</span></p><p class="metric-sub">fewest miles per round · Rookies not ranked</p>` : `<p class="metric-value">—</p><p class="metric-sub">Rookie · not ranked yet</p>`}</div>
+        <div class="metric-card"><p class="metric-label">Accuracy rank</p>${rank ? `<p class="metric-value">#${rank}<span class="of"> of ${sharers.length}</span></p><p class="metric-sub">fewest miles per round · Youth League not ranked</p>` : `<p class="metric-value">—</p><p class="metric-sub">Youth League · not ranked yet</p>`}</div>
       </div>
       ${funMilesHTML(total)}`;
   }
