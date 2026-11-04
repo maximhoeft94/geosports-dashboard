@@ -181,6 +181,12 @@
   .b-rookie { background: var(--gold-soft); color: #8a5a00; border: 1px solid #f0d58a; }
   .section-title .bucket { font-size: 13px; vertical-align: 4px; }
   .league-bar .chips { gap: 8px; }
+  .season-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .season-head h3 { margin: 0; }
+  .season-status { font-family: var(--font-cond); font-size: 14px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 3px 10px; border-radius: 999px; background: var(--field); color: var(--navy); }
+  .season-status.live { background: rgba(19,138,75,0.12); color: var(--win); }
+  .season-card { margin-top: 16px; }
+  .season-card .metric-grid { margin: 14px 0; }
   .league-bar.lg-regular { border-top: 5px solid var(--navy); }
   .league-bar.lg-part { border-top: 5px solid #7f9bc9; }
   .league-bar.lg-rookie { border-top: 5px solid var(--gold); }
@@ -304,7 +310,7 @@
     header h1 { font-size: 20px; }
     header .subtitle { font-size: 12px; letter-spacing: 1.5px; }
     header .meta { width: 100%; justify-content: space-between; font-size: 14px; }
-    .tab-bar { display: grid; grid-template-columns: 1fr 1.35fr 1fr; width: 100%; box-sizing: border-box; }
+    .tab-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; width: 100%; box-sizing: border-box; border-radius: 18px; }
     .tab-btn { font-size: 14px; letter-spacing: .5px; padding: 8px 4px; white-space: nowrap; }
     .card { padding: 14px 12px; }
     .row2 { grid-template-columns: minmax(0,1fr); }
@@ -340,6 +346,7 @@
     <button class="tab-btn active" type="button" role="tab" id="tab-overview" data-tab="overview" aria-selected="true">Overview</button>
     <button class="tab-btn" type="button" role="tab" id="tab-player" data-tab="player" aria-selected="false">Player Analysis</button>
     <button class="tab-btn" type="button" role="tab" id="tab-questions" data-tab="questions" aria-selected="false">Questions</button>
+    <button class="tab-btn" type="button" role="tab" id="tab-seasons" data-tab="seasons" aria-selected="false">Seasons</button>
   </nav>
 
   <div id="app">
@@ -371,7 +378,7 @@
   const sd = (a) => { if (a.length < 2) return null; const m = mean(a); return Math.sqrt(a.reduce((s, x) => s + (x - m) ** 2, 0) / (a.length - 1)); };
 
   try { const l = localStorage.getItem('gs-league'); if (['regular', 'part', 'rookie'].includes(l)) S.league = l; } catch (e) {}
-  try { const t = localStorage.getItem('gs-tab'); if (t === 'player' || t === 'questions') S.tab = t; } catch (e) {}
+  try { const t = localStorage.getItem('gs-tab'); if (t === 'player' || t === 'questions' || t === 'seasons') S.tab = t; } catch (e) {}
 
   // ---------- Model ----------
   function model(league) {
@@ -410,10 +417,11 @@
     if (!S.focus || !M.byId[S.focus]) S.focus = M.byId[M.me] ? M.me : M.members[0]?.userId;
     $('title').innerHTML = esc(M.m.group?.name || 'GeoSports') + ' <span class="accent">Scoreboard</span>';
     $('subtitle').textContent = 'GeoSports group ' + (M.m.group?.code || '') + ' · daily results';
-    $('meta-line').textContent = pl(M.complete.length, 'day') + ' tracked';
+    $('meta-line').textContent = `${M.m.season.label} · day ${fmt(M.m.seasonDays)} of ${fmt(M.m.seasonLength)}`;
     setUpdated();
     Object.values(charts).forEach((c) => c.destroy()); for (const k in charts) delete charts[k];
     if (S.tab === 'questions') { $('app').innerHTML = questionsTabHTML(); return; }
+    if (S.tab === 'seasons') { $('app').innerHTML = seasonsTabHTML(M); return; }
     if (S.tab === 'overview') {
       // A league with nobody in it right now falls back to the full group.
       if (S.league !== 'all' && !M.members.some((p) => p.bucket === S.league)) S.league = 'all';
@@ -532,7 +540,7 @@
       ${listSection('bench', 'bench', 'You’re Benched!', bottom, `The ${nList === 1 ? 'worst single round' : nList + ' worst single rounds'} since the season started. Tied scores are listed by date, earliest first.`)}
       <!--LEAGUE-SPLIT-->
       <h2 class="section-title">Season Totals</h2>
-      <p class="section-sub">Calculated from every round since the season started on ${esc(fmtDate(M.m.start, { month: 'long', day: 'numeric' }))}${M.league === 'all' ? '' : `, counting only the ${B_INFO[M.league].label}`}.</p>
+      <p class="section-sub">Calculated from every round of ${esc(M.m.season.label)}, which started on ${esc(fmtDate(M.m.start, { month: 'long', day: 'numeric' }))}${M.league === 'all' ? '' : `, counting only the ${B_INFO[M.league].label}`}.</p>
       <div class="metric-grid">
         ${seasonTiles(M)}
       </div>
@@ -1052,11 +1060,66 @@
   const isMeId = (M, p) => p.userId === M.me;
 
   // ---------- Questions tab ----------
+  // ---------- Seasons ----------
+  // Seasons follow the fiscal quarter, with the fiscal year one ahead of the calendar year:
+  // Oct to Dec 2026 is Q4 Season '27, Jan to Mar 2027 is Q1 Season '28, and so on.
+  function seasonOf(date) {
+    const y = +date.slice(0, 4), q = Math.floor((+date.slice(5, 7) - 1) / 3) + 1, sm = (q - 1) * 3 + 1;
+    const next = q === 4 ? `${y + 1}-01-01` : `${y}-${String(sm + 3).padStart(2, '0')}-01`;
+    return { key: `${y}Q${q}`, q, label: `Q${q} Season '${String(y + 1).slice(2)}`, start: `${y}-${String(sm).padStart(2, '0')}-01`, end: addDays(next, -1) };
+  }
+  // Standings for one season. Once a season ends, its final standings are saved in the sheet's Seasons tab;
+  // saved rows win over a fresh calculation so a finished season never changes.
+  function seasonSummary(se, roster, allDays, asOf, trackStart, savedRows) {
+    const from = se.start < trackStart ? trackStart : se.start, to = se.end < asOf ? se.end : asOf;
+    const days = allDays.filter((d) => d.date >= from && d.date <= to);
+    const nDays = Math.round((toDate(to) - toDate(from)) / 864e5) + 1, length = Math.round((toDate(se.end) - toDate(from)) / 864e5) + 1;
+    let members = computeStats(roster, days, to).filter((p) => p.alltime.games > 0);
+    members.forEach((p) => { p.share = p.alltime.games / nDays; p.bucket = bucketOf(p.alltime.games, nDays); });
+    const keyOf = Object.fromEntries(BUCKETS.map((b) => [b.label, b.key]));
+    if (savedRows.length) members = savedRows.map((r) => ({ userId: r['User ID'], name: r.Player, bucket: keyOf[r.League] || 'rookie', share: (num(r['Share of days']) || 0) / 100, alltime: { avg: num(r.Avg), games: num(r.Rounds) || 0, won: num(r['Days won']) || 0 } }));
+    return { ...se, from, to, days, nDays, length, final: se.end < asOf, saved: savedRows.length > 0, members };
+  }
+
+  function seasonsTabHTML(M) {
+    const color = (id) => M.byId[id]?.color || '#8a94a6';
+    const cards = S.seasons.map((se) => {
+      const rounds = []; se.days.forEach((d) => Object.entries(d.scores).forEach(([id, sc]) => { if (se.members.some((p) => p.userId === id)) rounds.push({ id, score: sc, date: d.date }); }));
+      const nameOf = (id) => esc(se.members.find((p) => p.userId === id)?.name || '?');
+      const best = [...rounds].sort((a, b) => b.score - a.score || (a.date < b.date ? -1 : 1))[0];
+      const totalRounds = se.members.reduce((t, p) => t + p.alltime.games, 0);
+      const groupAvg = totalRounds ? se.members.reduce((t, p) => t + p.alltime.avg * p.alltime.games, 0) / totalRounds : null;
+      const topWon = Math.max(0, ...se.members.map((p) => p.alltime.won)), wonBy = se.members.filter((p) => topWon && p.alltime.won === topWon);
+      const tile = (label, value, who, sub, cls) => `<div class="metric-card ${cls || ''}"><p class="metric-label">${label}</p><p class="metric-value">${value}</p>${who ? `<p class="metric-who">${who}</p>` : ''}<p class="metric-sub">${sub}</p></div>`;
+      const champs = BUCKETS.map((b, i) => { const inB = se.members.filter((p) => p.bucket === b.key && p.alltime.avg != null); if (!inB.length) return ''; const top = Math.max(...inB.map((p) => p.alltime.avg)); const who = inB.filter((p) => p.alltime.avg === top);
+        return tile(`${b.label} ${se.final ? 'champion' : 'leader'}`, fmt(top), who.map((p) => esc(p.name)).join(' & '), `season avg · ${who.length === 1 ? pl(who[0].alltime.games, 'round') : 'tied'}`, i === 0 ? 'tile-lead' : ''); }).join('');
+      const tiles = champs
+        + (wonBy.length ? tile('Most days won', fmt(topWon), wonBy.map((p) => esc(p.name)).join(' & '), `out of ${pl(se.days.length, 'day')}`) : '')
+        + (best ? tile('Best round', fmt(best.score), nameOf(best.id), esc(fmtDate(best.date, { weekday: 'short', month: 'short', day: 'numeric' }))) : '')
+        + tile('Group average', fmt(groupAvg), '', `per round, all ${pl(totalRounds, 'round')}`);
+      const rows = BUCKETS.map((b) => { const g = se.members.filter((p) => p.bucket === b.key).sort((a, c) => (c.alltime.avg ?? -1) - (a.alltime.avg ?? -1)); if (!g.length) return '';
+        let rank = 0, prev = null;
+        return `<tr class="prov-head"><td colspan="6">${b.label} · played ${b.rule}</td></tr>` + g.map((p, i) => { if (p.alltime.avg !== prev) rank = i + 1; prev = p.alltime.avg;
+          return `<tr><td class="rank">${rank}</td><td><div class="player-cell"><span class="swatch" style="background:${color(p.userId)}"></span>${esc(p.name)}${rank === 1 ? ` <span class="crown">${se.final ? 'CHAMPION' : 'LEADER'}</span>` : ''}</div></td><td class="num">${fmt(p.alltime.avg)}</td><td class="num">${fmt(p.alltime.games)}</td><td class="num">${fmt(p.alltime.won)}</td><td class="num">${fmt(100 * p.share, 0)}%</td></tr>`; }).join(''); }).join('');
+      const dates = `${fmtDate(se.from, { month: 'short', day: 'numeric' })} to ${fmtDate(se.end, { month: 'short', day: 'numeric', year: 'numeric' })}`;
+      return `<section class="card season-card">
+          <div class="season-head"><h3>${esc(se.label)}</h3><span class="season-status${se.final ? '' : ' live'}">${se.final ? 'Final' : `In progress · day ${fmt(se.nDays)} of ${fmt(se.length)}`}</span></div>
+          <p class="sub" style="margin:6px 0 0">${dates}${se.final ? (se.saved ? ' · final standings saved in the sheet' : ' · final standings') : ' · standings so far, final once the season ends'}.</p>
+          ${se.members.length ? `<div class="metric-grid">${tiles}</div>
+          <div class="scroll-table flat"><table><thead><tr><th>#</th><th>Player</th><th class="num">Avg</th><th class="num">Rounds</th><th class="num">Days won</th><th class="num">Share of days</th></tr></thead><tbody>${rows}</tbody></table></div>` : '<p class="sub" style="margin:12px 0 0">No rounds yet.</p>'}
+        </section>`;
+    }).join('');
+    return `<section class="card">
+        <div class="filter-label">Seasons</div>
+        <p class="sub" style="margin:0">Each season is one fiscal quarter: Q1 is Jan to Mar, Q2 Apr to Jun, Q3 Jul to Sep and Q4 Oct to Dec, and the fiscal year runs one ahead, so Oct to Dec 2026 is Q4 Season '27. The Overview always shows the current season. When a season ends, its final standings are saved here. Leagues, ranks and days won are worked out inside each season.</p>
+      </section>${cards}`;
+  }
+
   function questionsTabHTML() {
     const byDate = {}; S.questions.forEach((x) => { (byDate[x.date] = byDate[x.date] || []).push(x); });
     const dates = Object.keys(byDate).sort().reverse();
     if (!dates.length) return '<div class="card empty-state"><h2>No questions yet</h2><p>Questions appear here after the next refresh.</p></div>';
-    const start = S.meta.start;
+    const start = S.meta.trackStart;
     const dayNo = (d) => Math.round((new Date(d + 'T12:00:00') - new Date(start + 'T12:00:00')) / 864e5) + 1;
     // Only the current (newest) day starts open; every earlier day is collapsed.
     const nowD = new Date(), todayISO = nowD.getFullYear() + '-' + String(nowD.getMonth() + 1).padStart(2, '0') + '-' + String(nowD.getDate()).padStart(2, '0');
@@ -1066,7 +1129,7 @@
       </details>`).join('');
     return `<section class="card">
         <h3>Questions</h3>
-        <p class="sub">Every daily question since the season started on ${esc(fmtDate(start, { month: 'long', day: 'numeric' }))}: ${pl(S.questions.length, 'question')} over ${pl(dates.length, 'day')}, newest first. Prompts only, no answers.</p>
+        <p class="sub">Every daily question since tracking started on ${esc(fmtDate(start, { month: 'long', day: 'numeric', year: 'numeric' }))}: ${pl(S.questions.length, 'question')} over ${pl(dates.length, 'day')}, newest first. Prompts only, no answers.</p>
         <input type="search" id="q-search" class="q-search" placeholder="Search questions (player, team, city…)" aria-label="Search questions" autocomplete="off">
         <p class="sub" id="q-count" style="margin:8px 0 0"></p>
       </section>
@@ -1157,31 +1220,36 @@
   }
 
   async function loadSheet() {
-    const [players, info, daily, qrows, qtext] = await Promise.all([fetchTab('Players'), fetchTab('Info'), fetchTab('Daily Scores'), fetchTab('Question Scores').catch(() => []), fetchTab('Questions').catch(() => [])]);
+    const [players, info, daily, qrows, qtext, saved] = await Promise.all([fetchTab('Players'), fetchTab('Info'), fetchTab('Daily Scores'), fetchTab('Question Scores').catch(() => []), fetchTab('Questions').catch(() => []), fetchTab('Seasons').catch(() => [])]);
     const I = Object.fromEntries(info.map((r) => [r.Field, r.Value]));
-    const start = I['Tracking starts'] || '2026-10-02';
+    const trackStart = I['Tracking starts'] || '2026-10-02';
     // Players marked "left" in the Status column are dropped from every stat, chart and table.
     const roster = players.filter((p) => p['User ID'] && String(p.Status || '').trim().toLowerCase() !== 'left').map((p) => ({ userId: p['User ID'], name: p.Player, role: p.Role, memberSince: p['Member since'] }));
     const idByName = Object.fromEntries(roster.map((m) => [m.name, m.userId]));
-    const days = daily.filter((r) => /^\d{4}-\d{2}-\d{2}$/.test(r.Date) && r.Date >= start).map((r) => {
+    const allDays = daily.filter((r) => /^\d{4}-\d{2}-\d{2}$/.test(r.Date) && r.Date >= trackStart).map((r) => {
       const scores = {};
       Object.entries(r).forEach(([k, v]) => { const id = idByName[k]; const n = num(v); if (id && n != null) scores[id] = n; });
       return { date: r.Date, complete: true, scores };
     }).filter((d) => Object.keys(d.scores).length);
-    const lastDay = days.length ? days.map((d) => d.date).sort().pop() : null;
-    const asOf = [I['GeoSports day'], lastDay].filter(Boolean).sort().pop() || start;
+    const lastDay = allDays.length ? allDays.map((d) => d.date).sort().pop() : null;
+    const asOf = [I['GeoSports day'], lastDay].filter(Boolean).sort().pop() || trackStart;
+    // The Overview, Player Analysis and leagues only cover the current season (fiscal quarter).
+    const season = seasonOf(asOf), start = season.start < trackStart ? trackStart : season.start;
+    const days = allDays.filter((d) => d.date >= start);
+    const seasonList = []; for (let se = seasonOf(trackStart); seasonList.length < 60; se = seasonOf(addDays(se.end, 1))) { seasonList.push(se); if (se.key === season.key) break; }
+    S.seasons = seasonList.reverse().map((se) => seasonSummary(se, roster, allDays, asOf, trackStart, saved.filter((r) => r.Season === se.label)));
     const members = computeStats(roster, days, asOf);
     const seasonDays = Math.round((toDate(asOf) - toDate(start)) / 864e5) + 1;
     members.forEach((p) => { p.share = (p.alltime?.games || 0) / seasonDays; p.bucket = bucketOf(p.alltime?.games || 0, seasonDays); });
     S.meta = {
-      seasonDays,
+      seasonDays, season, trackStart, seasonLength: Math.round((toDate(season.end) - toDate(start)) / 864e5) + 1,
       group: { name: I['Group'] || 'GeoSports', code: I['Group code'] || '' }, start,
       date: asOf, fetchedAt: I['Last refreshed (UTC)'], currentUserId: I['Dashboard owner user ID'],
       members, today: members.filter((m) => m.todayScore != null).map((m) => ({ userId: m.userId, score: m.todayScore }))
     };
     S.days = days;
     // Every daily question prompt since the season started (prompts only, no answers).
-    S.questions = qtext.filter((r) => /^\d{4}-\d{2}-\d{2}$/.test(r.Date) && r.Date >= start && r.Prompt).map((r) => ({ date: r.Date, q: num(r.Question), mult: num(r.Multiplier), text: r.Prompt }));
+    S.questions = qtext.filter((r) => /^\d{4}-\d{2}-\d{2}$/.test(r.Date) && r.Date >= trackStart && r.Prompt).map((r) => ({ date: r.Date, q: num(r.Question), mult: num(r.Multiplier), text: r.Prompt }));
     // One row per player per question. Rows only count when that day's question points add up to the official daily score.
     const official = {}; days.forEach((d) => { official[d.date] = d.scores; });
     const q = qrows.filter((r) => /^\d{4}-\d{2}-\d{2}$/.test(r.Date) && r.Date >= start && r['User ID']).map((r) => ({
