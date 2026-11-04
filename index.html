@@ -181,7 +181,6 @@
   .b-rookie { background: var(--gold-soft); color: #8a5a00; border: 1px solid #f0d58a; }
   .section-title .bucket { font-size: 13px; vertical-align: 4px; }
   .league-bar .chips { gap: 8px; }
-  .league-bar { margin-top: 28px; }
   .league-bar.lg-regular { border-top: 5px solid var(--navy); }
   .league-bar.lg-part { border-top: 5px solid #7f9bc9; }
   .league-bar.lg-rookie { border-top: 5px solid var(--gold); }
@@ -425,7 +424,7 @@
       VIEW_LEAGUE = S.league;
       const LM = S.league === 'all' ? M : model(S.league);
       const [, rest] = overviewHTML(LM).split('<!--LEAGUE-SPLIT-->');
-      $('app').innerHTML = top + leagueSwitcher(M) + rest;
+      $('app').innerHTML = top + '<hr class="exec-rule">' + leagueSwitcher(M) + rest;
       overviewCharts(LM); VIEW_LEAGUE = 'all';
       return;
     }
@@ -529,7 +528,6 @@
         <button type="button" class="card-toggle" aria-expanded="${S.open.bests}">Record Book</button>
         <div class="card-body"><div class="item-grid">${bests.map(([l, v, w, s]) => `<div class="item"><div class="lbl">${l}</div><div class="val">${v}</div><div class="who">${esc(w)}</div><div class="s">${esc(s)}</div></div>`).join('')}</div></div>
       </section>
-      <hr class="exec-rule">
       ${listSection('hof', 'hof', 'Hall of Famers', top, `The ${nList === 1 ? 'best single round' : nList + ' best single rounds'} since the season started.`)}
       ${listSection('bench', 'bench', 'You’re Benched!', bottom, `The ${nList === 1 ? 'worst single round' : nList + ' worst single rounds'} since the season started. Tied scores are listed by date, earliest first.`)}
       <!--LEAGUE-SPLIT-->
