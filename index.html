@@ -181,6 +181,7 @@
   .b-rookie { background: var(--gold-soft); color: #8a5a00; border: 1px solid #f0d58a; }
   .section-title .bucket { font-size: 13px; vertical-align: 4px; }
   .league-bar .chips { gap: 8px; }
+  .league-bar { margin-top: 28px; }
   .league-bar.lg-regular { border-top: 5px solid var(--navy); }
   .league-bar.lg-part { border-top: 5px solid #7f9bc9; }
   .league-bar.lg-rookie { border-top: 5px solid var(--gold); }
@@ -417,9 +418,14 @@
     if (S.tab === 'overview') {
       // A league with nobody in it right now falls back to the full group.
       if (S.league !== 'all' && !M.members.some((p) => p.bucket === S.league)) S.league = 'all';
+      // Record Book, Hall of Famers and You're Benched! always cover the whole group; the league filter
+      // sits above Season Totals and only applies from there down.
+      VIEW_LEAGUE = 'all';
+      const [top] = overviewHTML(M).split('<!--LEAGUE-SPLIT-->');
       VIEW_LEAGUE = S.league;
       const LM = S.league === 'all' ? M : model(S.league);
-      $('app').innerHTML = leagueSwitcher(M) + overviewHTML(LM);
+      const [, rest] = overviewHTML(LM).split('<!--LEAGUE-SPLIT-->');
+      $('app').innerHTML = top + leagueSwitcher(M) + rest;
       overviewCharts(LM); VIEW_LEAGUE = 'all';
       return;
     }
@@ -472,7 +478,7 @@
     const bAvg = byQ((p) => p.alltime?.avg), bWon = by((p) => p.alltime?.won), bStreak = by((p) => p.currentStreak), bGames = by((p) => p.alltime?.games), bWeek = by((p) => p.week?.avg);
     let hi = null; complete.forEach((d) => d.entries.forEach(([id, sc]) => { if (!hi || sc > hi.score) hi = { date: d.date, score: sc, id }; }));
     const bests = [
-      bAvg && ['Best season avg', fmt(bAvg.alltime.avg), bAvg.name, `over ${pl(bAvg.alltime.games, 'round')} · Rookies not counted`],
+      bAvg && ['Best season avg', fmt(bAvg.alltime.avg), bAvg.name, `over ${pl(bAvg.alltime.games, 'round')} · Youth League not counted`],
       hi && ['Highest round', fmt(hi.score), byId[hi.id].name, fmtDate(hi.date, { month: 'short', day: 'numeric' })],
       bWon && ['Most days won', fmt(bWon.alltime.won), bWon.name, `${fmt(100 * bWon.alltime.won / bWon.alltime.games, 0)}% of rounds played`],
       bStreak && bStreak.currentStreak > 0 && ['Longest active streak', fmt(bStreak.currentStreak) + (bStreak.currentStreak === 1 ? ' day' : ' days'), bStreak.name, 'consecutive days played'],
@@ -526,7 +532,7 @@
       <hr class="exec-rule">
       ${listSection('hof', 'hof', 'Hall of Famers', top, `The ${nList === 1 ? 'best single round' : nList + ' best single rounds'} since the season started.`)}
       ${listSection('bench', 'bench', 'You’re Benched!', bottom, `The ${nList === 1 ? 'worst single round' : nList + ' worst single rounds'} since the season started. Tied scores are listed by date, earliest first.`)}
-
+      <!--LEAGUE-SPLIT-->
       <h2 class="section-title">Season Totals</h2>
       <p class="section-sub">Calculated from every round since the season started on ${esc(fmtDate(M.m.start, { month: 'long', day: 'numeric' }))}${M.league === 'all' ? '' : `, counting only the ${B_INFO[M.league].label}`}.</p>
       <div class="metric-grid">
@@ -662,7 +668,7 @@
     return `<section class="card league-bar${S.league === 'all' ? '' : ' lg-' + S.league}">
         <div class="filter-label">League</div>
         <div class="chips">${chip('all', 'All players', M.members.length)}${BUCKETS.map((b) => chip(b.key, b.label, n(b.key))).join('')}</div>
-        <p class="sub" style="margin:10px 0 0">${cur ? `Showing the <b>${cur.label}</b>: players who have played ${cur.rule} since the season started. Every report below, from the Record Book to the Space Race, only counts these players, so days won and records are within the league.` : 'Showing everyone. Pick a league to see its own standings, records, charts and Space Race. Leagues are set by the share of days played since the season started and update every day.'}</p>
+        <p class="sub" style="margin:10px 0 0">${cur ? `Showing the <b>${cur.label}</b>: players who have played ${cur.rule} since the season started. Season Totals, the leaderboard, charts and Space Race below only count these players.` : 'Showing everyone. Pick a league to see its own Season Totals, standings, charts and Space Race. Leagues are set by the share of days played since the season started and update every day.'}</p>
       </section>`;
   }
 
