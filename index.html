@@ -174,6 +174,11 @@
   .rank { font-family: var(--font-num); font-size: 24px; font-weight: 600; color: var(--navy); line-height: 1; }
   .player-cell { display: flex; align-items: center; gap: 8px; font-weight: 700; }
   .swatch { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+  .bucket { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 6px; font-family: var(--font-cond); font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; vertical-align: 2px; white-space: nowrap; }
+  .b-regular { background: var(--navy); color: #fff; }
+  .b-part { background: #dfe6f3; color: var(--navy); }
+  .b-rookie { background: var(--gold-soft); color: #8a5a00; border: 1px solid #f0d58a; }
+  .section-title .bucket { font-size: 13px; vertical-align: 4px; }
   .crown { font-family: var(--font-cond); font-size: 11px; font-weight: 700; letter-spacing: 1px; color: var(--ink); background: var(--gold); padding: 1px 6px; border-radius: 3px; }
   .pill { display: inline-block; padding: 0 9px; font-family: var(--font-cond); font-weight: 700; font-size: 14px; letter-spacing: 1px; border-radius: 999px; color: #fff; }
   .pill-w { background: var(--win); }
@@ -346,7 +351,7 @@
 (function () {
   'use strict';
   const PALETTE = ['#c98a00', '#1f4fd1', '#d42a3c', '#138a4b', '#7c3aed', '#ea580c', '#db2777', '#0e9488'];
-  const S = { meta: null, days: [], q: [], questions: [], tab: 'overview', period: 'week', players: new Set(), range: '30', focus: null, open: { bests: false, hof: false, bench: false, results: false } };
+  const S = { lbView: 'bucket', meta: null, days: [], q: [], questions: [], tab: 'overview', period: 'week', players: new Set(), range: '30', focus: null, open: { bests: false, hof: false, bench: false, results: false } };
   const charts = {};
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -416,8 +421,17 @@
 
   // ---------- Overview ----------
   // Rankings by average only count players with enough rounds to mean something.
-  const MIN_ROUNDS = 10;
-  const qualifies = (p) => (p.alltime?.games || 0) >= MIN_ROUNDS;
+  // Buckets: share of days played since the season started (recalculated on every load).
+  // Regulars 75%+ of days, Part-timers 25% to 75%, Rookies under 25%. Rookies aren't ranked by average.
+  const BUCKETS = [
+    { key: 'regular', label: 'Regulars', short: 'Regular', rule: '75%+ of days' },
+    { key: 'part', label: 'Part-timers', short: 'Part-timer', rule: '25% to 75% of days' },
+    { key: 'rookie', label: 'Rookies', short: 'Rookie', rule: 'under 25% of days' },
+  ];
+  const bucketOf = (games, seasonDays) => { const s = seasonDays ? games / seasonDays : 0; return s >= 0.75 ? 'regular' : s >= 0.25 ? 'part' : 'rookie'; };
+  const B_INFO = Object.fromEntries(BUCKETS.map((b) => [b.key, b]));
+  const qualifies = (p) => (p.alltime?.games || 0) > 0 && p.bucket !== 'rookie';
+  const badge = (p) => `<span class="bucket b-${p.bucket}" title="${B_INFO[p.bucket].label}: played ${B_INFO[p.bucket].rule}">${B_INFO[p.bucket].short}</span>`;
 
   function overviewHTML(M) {
     const { members, complete, series, byId } = M;
@@ -434,7 +448,7 @@
     const bAvg = byQ((p) => p.alltime?.avg), bWon = by((p) => p.alltime?.won), bStreak = by((p) => p.currentStreak), bGames = by((p) => p.alltime?.games), bWeek = by((p) => p.week?.avg);
     let hi = null; complete.forEach((d) => d.entries.forEach(([id, sc]) => { if (!hi || sc > hi.score) hi = { date: d.date, score: sc, id }; }));
     const bests = [
-      bAvg && ['Best season avg', fmt(bAvg.alltime.avg), bAvg.name, `over ${pl(bAvg.alltime.games, 'round')} · min ${MIN_ROUNDS} rounds`],
+      bAvg && ['Best season avg', fmt(bAvg.alltime.avg), bAvg.name, `over ${pl(bAvg.alltime.games, 'round')} · Rookies not counted`],
       hi && ['Highest round', fmt(hi.score), byId[hi.id].name, fmtDate(hi.date, { month: 'short', day: 'numeric' })],
       bWon && ['Most days won', fmt(bWon.alltime.won), bWon.name, `${fmt(100 * bWon.alltime.won / bWon.alltime.games, 0)}% of rounds played`],
       bStreak && bStreak.currentStreak > 0 && ['Longest active streak', fmt(bStreak.currentStreak) + (bStreak.currentStreak === 1 ? ' day' : ' days'), bStreak.name, 'consecutive days played'],
@@ -499,8 +513,9 @@
 
       <section class="card">
         <div class="filter-label">Leaderboard</div>
-        <p class="sub">Week, month and season rank by average score, the same way GeoSports does, so a missed day doesn’t sink you. Month and season rankings need ${MIN_ROUNDS} season rounds. Click a player for their full breakdown.</p>
+        <p class="sub">Week, month and season rank by average score, the same way GeoSports does, so a missed day doesn’t sink you. Month and season group players by how often they play: Regulars (75%+ of days), Part-timers (25% to 75%) and Rookies (under 25%). Click a player for their full breakdown.</p>
         <div class="chips" style="margin-bottom:12px">${periodChip('today', 'Today')}${periodChip('week', 'This week')}${periodChip('month', 'This month')}${periodChip('alltime', 'Season')}</div>
+        ${S.period === 'month' || S.period === 'alltime' ? `<div class="chips" style="margin:-4px 0 12px"><button type="button" class="chip${S.lbView === 'bucket' ? ' active' : ''}" data-lbview="bucket">By bucket</button><button type="button" class="chip${S.lbView === 'overall' ? ' active' : ''}" data-lbview="overall">Overall</button></div>` : ''}
         <div class="scroll-table flat">${leaderboardTable(M)}</div>
       </section>
 
@@ -512,7 +527,7 @@
         </section>
         <section class="card">
           <h3>Average score</h3>
-          <p class="sub">Season average per player, highest first. Players need ${MIN_ROUNDS} rounds to appear${members.some((p) => p.alltime?.games && !qualifies(p)) ? ` (not yet: ${members.filter((p) => p.alltime?.games && !qualifies(p)).map((p) => `${esc(p.name)} ${p.alltime.games}/${MIN_ROUNDS}`).join(', ')})` : ''}.</p>
+          <p class="sub">Season average per player, highest first. Rookies (under 25% of days played) aren’t shown${members.some((p) => p.alltime?.games && !qualifies(p)) ? `: ${members.filter((p) => p.alltime?.games && !qualifies(p)).map((p) => esc(p.name)).join(', ')}` : ''}.</p>
           <div class="chart-wrap" style="height:280px"><canvas id="c-avg" role="img" aria-label="Season average score per player, highest first"></canvas></div>
         </section>
       </div>
@@ -621,9 +636,8 @@
     const { members, days, asOf } = M;
     const names = (list) => list.map((p) => esc(p.name)).join(' & ');
     const played = members.filter(qualifies);
-    const hi = played.length ? Math.max(...played.map((p) => p.alltime.avg)) : null;
     const lo = played.length ? Math.min(...played.map((p) => p.alltime.avg)) : null;
-    const leaders = played.filter((p) => p.alltime.avg === hi), trailers = played.filter((p) => p.alltime.avg === lo);
+    const trailers = played.filter((p) => p.alltime.avg === lo);
     const all = []; days.forEach((d) => Object.entries(d.scores).forEach(([id, sc]) => { if (M.byId[id]) all.push(sc); }));
     const from7 = addDays(asOf, -6);
     const r7 = members.map((p) => { const s = days.filter((d) => d.date >= from7 && d.date <= asOf && d.scores[p.userId] != null).map((d) => d.scores[p.userId]); return { p, n: s.length, avg: mean(s) }; }).filter((x) => x.n);
@@ -634,8 +648,9 @@
     const lateJoiners = members.filter((p) => p.memberSince && days.length && p.memberSince > days[0].date).length;
     const tile = (label, value, who, sub, cls) => `<div class="metric-card ${cls || ''}"><p class="metric-label">${label}</p><p class="metric-value">${value}</p>${who ? `<p class="metric-who">${who}</p>` : ''}<p class="metric-sub">${sub}</p></div>`;
     return [
-      tile('Overall leader', fmt(hi), leaders.length ? names(leaders) : '—', leaders.length ? `season avg · ${leaders.length === 1 ? pl(leaders[0].alltime.games, 'round') : 'tied'} · min ${MIN_ROUNDS} rounds` : `no one has ${MIN_ROUNDS} rounds yet`, 'tile-lead'),
-      tile('Needs to step it up', fmt(lo), played.length > 1 ? names(trailers) : '—', played.length > 1 ? `lowest season avg · ${trailers.length === 1 ? pl(trailers[0].alltime.games, 'round') : 'tied'} · min ${MIN_ROUNDS} rounds` : `needs 2+ players with ${MIN_ROUNDS} rounds`, 'tile-low'),
+      ...BUCKETS.map((b, i) => { const inB = members.filter((p) => p.bucket === b.key && p.alltime?.games > 0); const top = inB.length ? Math.max(...inB.map((p) => p.alltime.avg)) : null; const who = inB.filter((p) => p.alltime.avg === top);
+        return tile(`${b.label} leader`, fmt(top), who.length ? names(who) : '—', who.length ? `season avg · ${who.length === 1 ? pl(who[0].alltime.games, 'round') : 'tied'} · played ${b.rule}` : `no ${b.label.toLowerCase()} yet`, i === 0 ? 'tile-lead' : ''); }),
+      tile('Needs to step it up', fmt(lo), played.length > 1 ? names(trailers) : '—', played.length > 1 ? `lowest season avg · ${trailers.length === 1 ? pl(trailers[0].alltime.games, 'round') : 'tied'} · Rookies not counted` : 'needs 2+ Regulars or Part-timers', 'tile-low'),
       tile('Group average', fmt(mean(all)), '', `per round, all ${pl(all.length, 'round')}`),
       tile('7-day leader', fmt(hi7), lead7.length ? lead7.map((x) => esc(x.p.name)).join(' & ') : '—', lead7.length ? `avg over the last 7 days · ${lead7.length === 1 ? pl(lead7[0].n, 'round') : 'tied'}` : 'no rounds in the last 7 days'),
     ].join('');
@@ -660,25 +675,28 @@
       const t = Object.fromEntries((M.m.today || []).map((r) => [r.userId, r.score]));
       rows = M.members.map((p) => ({ p, v: t[p.userId] ?? null, g: t[p.userId] != null ? 1 : 0, w: null }));
     } else rows = M.members.map((p) => ({ p, v: p[S.period]?.avg ?? null, g: p[S.period]?.games || 0, w: p[S.period]?.won ?? 0 }));
-    // Only players with MIN_ROUNDS season rounds are ranked; everyone else is listed underneath as provisional.
-    // The minimum only applies to month and season; today and this week rank everyone who played.
-    const needMin = S.period === 'month' || S.period === 'alltime';
-    rows.forEach((r) => { r.q = !needMin || qualifies(r.p); });
-    rows.sort((a, b) => (b.q - a.q) || ((b.v ?? -1) - (a.v ?? -1)));
-    let rank = 0, prev = null;
-    const firstProv = rows.findIndex((r) => !r.q);
-    const body = rows.map((r, i) => {
-      if (r.q && r.v != null && r.v !== prev) rank = i + 1; if (r.q) prev = r.v;
-      const me = r.p.userId === M.me;
-      const shownRank = r.q && r.v != null ? rank : '—';
-      return `${i === firstProv ? `<tr class="prov-head"><td colspan="7">Provisional · fewer than ${MIN_ROUNDS} season rounds, not ranked yet</td></tr>` : ''}<tr class="clickable${me ? ' me' : ''}${r.q ? '' : ' prov'}" data-focus="${esc(r.p.userId)}" tabindex="0">
+    // Today and this week rank everyone who played. Month and season either group players into buckets
+    // (ranked within each bucket) or show one overall list with Rookies listed underneath, unranked.
+    const grouped = S.period === 'month' || S.period === 'alltime';
+    const groups = !grouped ? [{ head: null, rows, ranked: true }]
+      : S.lbView === 'bucket' ? BUCKETS.map((b) => ({ head: `${b.label} · played ${b.rule}`, rows: rows.filter((r) => r.p.bucket === b.key), ranked: true }))
+      : [{ head: null, rows: rows.filter((r) => r.p.bucket !== 'rookie'), ranked: true }, { head: 'Rookies · played under 25% of days, not ranked yet', rows: rows.filter((r) => r.p.bucket === 'rookie'), ranked: false }];
+    const body = groups.filter((g) => g.rows.length).map((g) => {
+      g.rows.sort((a, b) => (b.v ?? -1) - (a.v ?? -1));
+      let rank = 0, prev = null;
+      return (g.head ? `<tr class="prov-head"><td colspan="7">${g.head}</td></tr>` : '') + g.rows.map((r, i) => {
+        if (r.v != null && r.v !== prev) rank = i + 1; prev = r.v;
+        const me = r.p.userId === M.me;
+        const shownRank = g.ranked && r.v != null ? rank : '—';
+        return `<tr class="clickable${me ? ' me' : ''}${g.ranked ? '' : ' prov'}" data-focus="${esc(r.p.userId)}" tabindex="0">
         <td class="rank">${shownRank}</td>
-        <td><div class="player-cell"><span class="swatch" style="background:${r.p.color}"></span>${esc(r.p.name)}${shownRank === 1 ? ' <span class="crown">LEADER</span>' : ''}${r.q ? '' : ` <span class="dim">${fmt(r.p.alltime?.games || 0)}/${MIN_ROUNDS}</span>`}</div></td>
+        <td><div class="player-cell"><span class="swatch" style="background:${r.p.color}"></span>${esc(r.p.name)} ${badge(r.p)}${shownRank === 1 ? ' <span class="crown">LEADER</span>' : ''}</div></td>
         <td class="num">${r.v == null ? '<span class="dim">Not played</span>' : fmt(r.v)}</td>
         <td class="num">${fmt(r.g)}</td>
         <td class="num">${r.w == null ? '—' : fmt(r.w)}</td>
         <td class="num">${r.p.currentStreak ? fmt(r.p.currentStreak) + '<span class="dim"> d</span>' : '<span class="dim">0</span>'}</td>
         <td>${spark(M, r.p.userId)}</td></tr>`;
+      }).join('');
     }).join('');
     return `<table><thead><tr><th>#</th><th>Player</th><th class="num">${S.period === 'today' ? 'Score' : 'Avg'}</th><th class="num">Rounds</th><th class="num">Days won</th><th class="num">Streak</th><th>Last 7 days</th></tr></thead><tbody>${body}</tbody></table>`;
   }
@@ -797,10 +815,10 @@
         <div class="chips">${chips}</div>
       </section>
 
-      <h2 class="section-title">${esc(p.name)} · ${p.role === 'owner' ? 'Group owner' : 'Member'}</h2>
-      <p class="section-sub">Joined ${p.memberSince ? fmtDate(p.memberSince, { month: 'long', day: 'numeric', year: 'numeric' }) : '—'}. Stats cover ${pl(s.length, 'round')} since the season started on ${esc(fmtDate(M.m.start))}.</p>
+      <h2 class="section-title">${esc(p.name)} · ${p.role === 'owner' ? 'Group owner' : 'Member'} ${badge(p)}</h2>
+      <p class="section-sub">Joined ${p.memberSince ? fmtDate(p.memberSince, { month: 'long', day: 'numeric', year: 'numeric' }) : '—'}. Stats cover ${pl(s.length, 'round')} since the season started on ${esc(fmtDate(M.m.start))}, ${fmt(100 * p.share, 0)}% of the season’s ${fmt(M.m.seasonDays)} days, which makes them a ${B_INFO[p.bucket].short}.</p>
       <div class="metric-grid four">
-        ${metric('Season avg', fmt(at.avg), pos >= 0 ? `#${pos + 1} in the group` : `unranked · ${fmt(at.games || 0)}/${MIN_ROUNDS} rounds`)}
+        ${metric('Season avg', fmt(at.avg), (() => { if (p.bucket === 'rookie' || at.avg == null) return 'Rookie · not ranked yet'; const peers = M.members.filter((x) => x.bucket === p.bucket && x.alltime?.avg != null).sort((x, y) => y.alltime.avg - x.alltime.avg); return `#${peers.findIndex((x) => x.userId === p.userId) + 1} of the ${B_INFO[p.bucket].label}`; })())}
         ${metric('Rounds played', fmt(at.games), `since ${fmtDate(M.m.start)}`)}
         ${metric('Days won', fmt(at.won), winRate != null ? `${fmt(winRate, 1)}% win rate` : '—')}
         ${metric('Current streak', fmt(p.currentStreak || 0) + ' d', p.currentStreak ? 'consecutive days' : 'no active streak')}
@@ -910,14 +928,14 @@
     const sharers = [...new Set(S.q.map((x) => x.uid))].map((uid) => {
       const r = S.q.filter((x) => x.uid === uid); const n = new Set(r.map((x) => x.date)).size;
       return { uid, n, per: r.reduce((t, x) => t + (x.miles || 0), 0) / n };
-    }).filter((x) => x.n >= MIN_ROUNDS).sort((a, b) => a.per - b.per);
+    }).filter((x) => M.byId[x.uid] && qualifies(M.byId[x.uid])).sort((a, b) => a.per - b.per);
     const rank = sharers.findIndex((x) => x.uid === p.userId) + 1;
     const mi = (v) => fmt(v, 0) + '<span class="of"> mi</span>';
     return `<div class="metric-grid four miles-grid" style="margin:12px 0 0">
         <div class="metric-card tile-miles"><p class="metric-label">Total miles missed</p><p class="metric-value">${mi(total)}</p><p class="metric-sub">across ${fmt(mine.length)} ${mine.length === 1 ? 'guess' : 'guesses'} in ${pl(days, 'round')}</p></div>
         <div class="metric-card"><p class="metric-label">Miles missed per round</p><p class="metric-value">${mi(perRound)}</p><p class="metric-sub">all 5 guesses added up</p></div>
         <div class="metric-card"><p class="metric-label">Avg miss per guess</p><p class="metric-value">${mi(total / mine.length)}</p><p class="metric-sub">median ${fmt([...mine.map((x) => x.miles)].sort((a, b) => a - b)[Math.floor((mine.length - 1) / 2)], 0)} mi</p></div>
-        <div class="metric-card"><p class="metric-label">Accuracy rank</p>${rank ? `<p class="metric-value">#${rank}<span class="of"> of ${sharers.length}</span></p><p class="metric-sub">fewest miles per round · players with ${MIN_ROUNDS}+ shared rounds</p>` : `<p class="metric-value">—</p><p class="metric-sub">unranked · ${fmt(days)}/${MIN_ROUNDS} shared rounds</p>`}</div>
+        <div class="metric-card"><p class="metric-label">Accuracy rank</p>${rank ? `<p class="metric-value">#${rank}<span class="of"> of ${sharers.length}</span></p><p class="metric-sub">fewest miles per round · Rookies not ranked</p>` : `<p class="metric-value">—</p><p class="metric-sub">Rookie · not ranked yet</p>`}</div>
       </div>
       ${funMilesHTML(total)}`;
   }
@@ -995,9 +1013,10 @@
 
   // ---------- Events ----------
   document.addEventListener('click', (e) => {
-    const t = e.target.closest('[data-tab],[data-period],[data-range],[data-player],[data-focus],[data-col] > .card-toggle');
+    const t = e.target.closest('[data-lbview],[data-tab],[data-period],[data-range],[data-player],[data-focus],[data-col] > .card-toggle');
     if (!t) return;
-    if (t.dataset.tab) { S.tab = t.dataset.tab; try { localStorage.setItem('gs-tab', S.tab); } catch (x) {} }
+    if (t.dataset.lbview) S.lbView = t.dataset.lbview;
+    else if (t.dataset.tab) { S.tab = t.dataset.tab; try { localStorage.setItem('gs-tab', S.tab); } catch (x) {} }
     else if (t.dataset.period) S.period = t.dataset.period;
     else if (t.dataset.range) S.range = t.dataset.range;
     else if (t.dataset.player) { const id = t.dataset.player; if (id === 'all') S.players.clear(); else if (S.players.has(id)) S.players.delete(id); else S.players.add(id); }
@@ -1077,7 +1096,10 @@
     const lastDay = days.length ? days.map((d) => d.date).sort().pop() : null;
     const asOf = [I['GeoSports day'], lastDay].filter(Boolean).sort().pop() || start;
     const members = computeStats(roster, days, asOf);
+    const seasonDays = Math.round((toDate(asOf) - toDate(start)) / 864e5) + 1;
+    members.forEach((p) => { p.share = (p.alltime?.games || 0) / seasonDays; p.bucket = bucketOf(p.alltime?.games || 0, seasonDays); });
     S.meta = {
+      seasonDays,
       group: { name: I['Group'] || 'GeoSports', code: I['Group code'] || '' }, start,
       date: asOf, fetchedAt: I['Last refreshed (UTC)'], currentUserId: I['Dashboard owner user ID'],
       members, today: members.filter((m) => m.todayScore != null).map((m) => ({ userId: m.userId, score: m.todayScore }))
