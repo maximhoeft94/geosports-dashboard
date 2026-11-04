@@ -95,7 +95,7 @@
   }
   .filter-label { font-size: 15px; margin: 18px 0 10px; }
   .filter-label:first-child { margin-top: 0; }
-  .sub, .section-sub { font-size: 15px; color: var(--muted); margin: 0 0 12px; max-width: 75ch; }
+  .sub, .section-sub { font-size: 15px; color: var(--muted); margin: 0 0 12px; }
 
   .collapsible > .card-toggle { all: unset; display: flex; width: 100%; justify-content: space-between; align-items: center; cursor: pointer;
     font-family: var(--font-display); font-size: 18px; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -136,7 +136,7 @@
   .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-bottom: 12px; }
   .metric-grid.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .metric-card { padding: 12px 16px 12px; box-shadow: var(--shadow); }
-  .metric-label { font-family: var(--font-cond); font-size: 14px; font-weight: 700; letter-spacing: 1.5px; color: var(--muted); text-transform: uppercase; margin: 0; }
+  .metric-label { font-family: var(--font-cond); font-size: 14px; font-weight: 700; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; margin: 0; }
   .metric-value { font-family: var(--font-num); font-size: 44px; font-weight: 600; color: var(--navy); font-variant-numeric: tabular-nums; margin: 2px 0 0; line-height: 0.95; overflow-wrap: anywhere; }
   .metric-value.gold { color: var(--red); }
   .metric-value.name { font-family: var(--font-cond); font-size: 28px; font-weight: 700; line-height: 1.1; overflow-wrap: normal; word-break: normal; padding-top: 6px; }
@@ -537,7 +537,7 @@
 
       <section class="card">
         <div class="filter-label">Leaderboard</div>
-        <p class="sub">Week, month and season rank by average score, the same way GeoSports does, so a missed day doesn’t sink you. Month and season split players into leagues by how often they play: Major League (75%+ of days), Minor League (25% to 75%) and Youth League (under 25%). Click a player for their full breakdown.</p>
+        <p class="sub">Ranked by average score, the same way GeoSports does, so a missed day doesn’t sink you. Players are grouped into leagues by how often they play. Click a player for their full breakdown.</p>
         <div class="chips" style="margin-bottom:12px">${periodChip('today', 'Today')}${periodChip('week', 'This week')}${periodChip('month', 'This month')}${periodChip('alltime', 'Season')}</div>
         ${M.league === 'all' && (S.period === 'month' || S.period === 'alltime') ? `<div class="chips" style="margin:-4px 0 12px"><button type="button" class="chip${S.lbView === 'bucket' ? ' active' : ''}" data-lbview="bucket">By league</button><button type="button" class="chip${S.lbView === 'overall' ? ' active' : ''}" data-lbview="overall">Overall</button></div>` : ''}
         <div class="scroll-table flat">${leaderboardTable(M)}</div>
@@ -551,7 +551,7 @@
         </section>
         <section class="card">
           <h3>Average score</h3>
-          <p class="sub">Season average per player, highest first${M.league !== 'all' ? '.' : ' within each league: Major League, then Minor League, then Youth League. Youth League players have only a few rounds, so treat their averages lightly.'}</p>
+          <p class="sub">Season average per player, highest first${M.league !== 'all' ? '.' : ' within each league. Youth League players have only a few rounds, so read their averages lightly.'}</p>
           <div class="chart-wrap" style="height:${M.league === 'all' ? 360 : 280}px"><canvas id="c-avg" role="img" aria-label="Season average score per player, highest first"></canvas></div>
         </section>
       </div>
@@ -639,7 +639,7 @@
     const laps = racers.map((x) => `<div class="lap"><span class="dot" style="background:${x.p.color}"></span><span class="lap-name">${esc(x.p.name)}</span><b>${fmt(x.miles / DIST.earth, 1)}</b><span class="dim">laps</span></div>`).join('');
     return intro + `<section class="card space">
         <h3>Race to the Moon</h3>
-        <p class="sub">The Moon is ${fmt(DIST.moon)} miles away. More miles missed means further along. Once someone lands, their bar turns around and tracks the trip back to Earth. Forecasts use each player’s pace so far, counted from the last round in their data.</p>
+        <p class="sub">The Moon is ${fmt(DIST.moon)} miles away. More miles missed means further along. After landing, the bar tracks the trip back to Earth. Forecasts use each player’s pace so far.</p>
         <div class="lanes">${lanes}</div>
       </section>
       <section class="card space">
@@ -684,8 +684,8 @@
     const tile = (label, value, who, sub, cls) => `<div class="metric-card ${cls || ''}"><p class="metric-label">${label}</p><p class="metric-value">${value}</p>${who ? `<p class="metric-who">${who}</p>` : ''}<p class="metric-sub">${sub}</p></div>`;
     return [
       ...BUCKETS.filter((b) => M.league === 'all' || b.key === M.league).map((b, i) => { const inB = members.filter((p) => p.bucket === b.key && p.alltime?.games > 0); const top = inB.length ? Math.max(...inB.map((p) => p.alltime.avg)) : null; const who = inB.filter((p) => p.alltime.avg === top);
-        return tile(`${b.label} leader`, fmt(top), who.length ? names(who) : '—', who.length ? `season avg · ${who.length === 1 ? pl(who[0].alltime.games, 'round') : 'tied'} · played ${b.rule}` : `no ${b.name} players yet`, i === 0 ? 'tile-lead' : ''); }),
-      tile('Needs to step it up', fmt(lo), played.length > 1 ? names(trailers) : '—', played.length > 1 ? `lowest season avg · ${trailers.length === 1 ? pl(trailers[0].alltime.games, 'round') : 'tied'}${M.league === 'all' ? ' · Youth League not counted' : ' in the league'}` : (M.league === 'all' ? 'needs 2+ Major or Minor League players' : 'needs 2+ players in the league'), 'tile-low'),
+        return tile(`${b.label} leader`, fmt(top), who.length ? names(who) : '—', who.length ? `season avg · ${who.length === 1 ? pl(who[0].alltime.games, 'round') : 'tied'}` : `no ${b.name} players yet`, i === 0 ? 'tile-lead' : ''); }),
+      tile('Needs to step it up', fmt(lo), played.length > 1 ? names(trailers) : '—', played.length > 1 ? `lowest season avg · ${trailers.length === 1 ? pl(trailers[0].alltime.games, 'round') : 'tied'}${M.league === 'all' ? ' · excl. Youth League' : ' in the league'}` : (M.league === 'all' ? 'needs 2+ Major or Minor League players' : 'needs 2+ players in the league'), 'tile-low'),
       tile(M.league === 'all' ? 'Group average' : 'League average', fmt(mean(all)), '', `per round, all ${pl(all.length, 'round')}`),
       tile('7-day leader', fmt(hi7), lead7.length ? lead7.map((x) => esc(x.p.name)).join(' & ') : '—', lead7.length ? `avg over the last 7 days · ${lead7.length === 1 ? pl(lead7[0].n, 'round') : 'tied'}` : 'no rounds in the last 7 days'),
     ].join('');
@@ -725,7 +725,7 @@
         const shownRank = g.ranked && r.v != null ? rank : '—';
         return `<tr class="clickable${me ? ' me' : ''}${g.ranked ? '' : ' prov'}" data-focus="${esc(r.p.userId)}" tabindex="0">
         <td class="rank">${shownRank}</td>
-        <td><div class="player-cell"><span class="swatch" style="background:${r.p.color}"></span>${esc(r.p.name)} ${badge(r.p)}${shownRank === 1 ? ' <span class="crown">LEADER</span>' : ''}</div></td>
+        <td><div class="player-cell"><span class="swatch" style="background:${r.p.color}"></span>${esc(r.p.name)}${grouped || M.league !== 'all' ? '' : ' ' + badge(r.p)}${shownRank === 1 ? ' <span class="crown">LEADER</span>' : ''}</div></td>
         <td class="num">${r.v == null ? '<span class="dim">Not played</span>' : fmt(r.v)}</td>
         <td class="num">${fmt(r.g)}</td>
         <td class="num">${r.w == null ? '—' : fmt(r.w)}</td>
