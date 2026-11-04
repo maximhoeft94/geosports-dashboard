@@ -364,7 +364,7 @@
 (function () {
   'use strict';
   const PALETTE = ['#c98a00', '#1f4fd1', '#d42a3c', '#138a4b', '#7c3aed', '#ea580c', '#db2777', '#0e9488'];
-  const S = { league: 'all', meta: null, days: [], q: [], questions: [], tab: 'overview', period: 'week', players: new Set(), range: '30', focus: null, open: { bests: false, hof: false, bench: false, results: false } };
+  const S = { league: 'all', meta: null, days: [], q: [], questions: [], tab: 'overview', period: 'alltime', players: new Set(), range: '30', focus: null, open: { bests: false, hof: false, bench: false, results: false } };
   const charts = {};
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -552,7 +552,7 @@
       <section class="card">
         <div class="filter-label">Leaderboard</div>
         <p class="sub">Ranked by average score, the same way GeoSports does, so a missed day doesn’t sink you. Players are grouped into leagues by how often they play, and days won only count wins within your own league. Click a player for their full breakdown.</p>
-        <div class="chips" style="margin-bottom:12px">${periodChip('today', 'Today')}${periodChip('week', 'This week')}${periodChip('month', 'This month')}${periodChip('alltime', 'Season')}</div>
+        <div class="chips" style="margin-bottom:12px">${periodChip('alltime', 'Season')}${periodChip('month', 'This month')}${periodChip('week', 'This week')}${periodChip('today', 'Today')}</div>
         
         <div class="scroll-table flat">${leaderboardTable(M)}</div>
       </section>
