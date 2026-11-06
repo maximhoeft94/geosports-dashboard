@@ -234,12 +234,23 @@
   .lane-stat span { font-size: 13px; color: var(--muted); }
   .lane-team { padding-top: 14px; border-top: 1px dashed var(--line-strong); }
   .lane-upd { font-size: 12px; color: var(--faint); }
+  .lane-trips { font-family: var(--font-cond); font-size: 13px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--navy); }
   .lane-stat .lane-eta { margin-top: 2px; font-family: var(--font-cond); font-weight: 700; font-size: 14px; letter-spacing: .5px; color: var(--red); text-transform: uppercase; }
   .lane-track { display: flex; }
   .lane-track.returning { justify-content: flex-end; }
   .lane-track.returning .lane-fill { background-image: repeating-linear-gradient(-45deg, rgba(255,255,255,.28) 0 6px, transparent 6px 12px) !important; }
   .lane-earth { position: absolute; left: -6px; top: 50%; width: 18px; height: 18px; transform: translateY(-50%); border-radius: 50%; background: radial-gradient(circle at 35% 35%, #5fb6ff, #2f7fd8 55%, #1b4fa0); box-shadow: 0 0 0 2px var(--panel); z-index: 1; }
   .laps-wrap { display: grid; grid-template-columns: 260px 1fr; gap: 24px; align-items: center; }
+  .moonscene { position: relative; height: 250px; border-radius: 14px; background: #0b1530; overflow: hidden; image-rendering: pixelated; margin-top: 12px; }
+  .moonscene .px-ground { position: absolute; left: 0; bottom: 0; width: 100%; height: 72px; }
+  .moonscene .px-earth-sm { position: absolute; right: 22px; top: 18px; }
+  .moonscene .lander { position: absolute; left: calc(50% - 70px); bottom: 54px; }
+  .moonscene .planted { position: absolute; left: calc(50% + 30px); bottom: 50px; transform-origin: 0 100%; animation: plant 6s steps(6) infinite; }
+  .moonscene .planted svg { animation: wave 1s steps(2) infinite; transform-origin: 0 0; }
+  .moonscene .bubble { top: 26px; left: calc(50% - 22px); }
+  @keyframes plant { 0% { transform: translateY(-60px); } 25%, 100% { transform: translateY(0); } }
+  @keyframes wave { 50% { transform: skewY(-6deg); } }
+  @media (prefers-reduced-motion: reduce) { .moonscene .planted, .moonscene .planted svg { animation: none; } }
   .orbit { position: relative; width: 260px; height: 260px; border-radius: 14px; background: #0b1530; overflow: hidden; image-rendering: pixelated; }
   .stars { position: absolute; inset: 0; background-image: radial-gradient(#fff 1px, transparent 1.5px), radial-gradient(#9fd3ff 1px, transparent 1.5px); background-size: 37px 41px, 53px 47px; background-position: 3px 7px, 21px 29px; opacity: .55; animation: twinkle 2.4s steps(2) infinite; }
   .px-earth { position: absolute; left: 50%; top: 54%; transform: translate(-50%, -50%); }
@@ -595,7 +606,22 @@
     earth: ['.....dddddd.....', '...ddoooooodd...', '..doooggoooowod.', '.doogggggooowwd.', '.dooggggoooooood', 'doooggggoooggood', 'dooooggooogggggd', 'doooooggoogggood', 'dwwoooogoooggood', 'dooooooooooogood', '.dooggoooooooood', '.dooggggoowwood.', '..doogggooooood.', '...ddoooooodd...', '.....dddddd.....'],
     nautL: ['....hhhh....', '...hwwwwh...', '..hwvvvvwh..', '..hwvlvvwh..', '..hwvvvvwh..', '...hwwwwh...', '.ggwwrwwwwgg', 'w.gwwwwwwg.w', 'w..wwwwww..w', '...ww..ww...', '...ww..ww...', '..kkk..kkk..'],
   };
-  const PAL = { d: '#1b4fa0', o: '#2f7fd8', g: '#3fae5a', w: '#ffffff', h: '#8a95a8', v: '#13306b', l: '#9fd3ff', r: '#d42a3c', k: '#33415c' };
+  // Josh, first to the Moon: a hand-drawn sprite (dark hair, full beard, plaid flannel) in a glass helmet.
+  PX.josh = ['....GGGGGGGG....', '...G.HHHHHH.G...', '..G.HHHHHHHH.G..', '..G.HSSSSSSH.G..', '..G.SESSSSES.G..', '..G.SSSSSSSS.G..', '..G.BSSSSSSB.G..', '..G.BBSMMSBB.G..', '..G.BBBBBBBB.G..', '...G.BBBBBB.G...', '....GGGGGGGG....',
+    '...PRPPPRPPPR...', '..PPRPPPRPPPRP..', '..RRRRRRRRRRRR..', '..PPRPPPRPPPRP..', '..SPRPPPRPPPRS..', '...NNNNNNNNNN...', '...NNNN..NNNN...', '...NNNN..NNNN...', '..KKKKK..KKKKK..'];
+  PX.flag = ['ZFFFFFFFFF', 'ZFwFFXXXXX', 'ZFFFFwwwww', 'ZFFFFXXXXX', 'ZFFFFwwwww', 'ZXXXXXXXXX', 'Z.........', 'Z.........', 'Z.........', 'Z.........', 'Z.........', 'Z.........', 'Z.........', 'Z.........'];
+  // Players who have their own pixel portrait for the Moon landing scene (everyone else gets the astronaut).
+  const PORTRAITS = { '7f13929f-b32a-4f49-ae35-e06628b74107': 'josh' };
+  const PAL = { d: '#1b4fa0', o: '#2f7fd8', g: '#3fae5a', w: '#ffffff', h: '#8a95a8', v: '#13306b', l: '#9fd3ff', r: '#d42a3c', k: '#33415c',
+    G: '#bfe3ff', H: '#2a1d16', S: '#e0b090', E: '#1a1412', B: '#3b2a20', M: '#a8584e', P: '#6b4a2e', Q: '#8a7a3a', R: '#2b2420', C: '#d8c9a0', N: '#2f3640', K: '#151515',
+    F: '#13306b', X: '#d42a3c', Z: '#c8ccd4', m: '#9aa0aa', n: '#6d7380', u: '#c3c8d0' };
+  function moonGround(w, h) {
+    // Lunar surface: light grey with darker craters, a bumpy top edge. Deterministic so it never jumps between renders.
+    const rows = []; for (let y = 0; y < h; y++) { let r = ''; for (let x = 0; x < w; x++) { const top = 1 + ((x * 7) % 5 === 0 ? 1 : 0) + ((x * 3) % 11 === 0 ? 1 : 0);
+      const cr = [[9, 4, 3], [27, 6, 4], [44, 3, 2], [58, 7, 3], [72, 4, 3], [88, 6, 4]].some(([cx, cy, rad]) => (x - cx) ** 2 + ((y - cy) * 1.6) ** 2 <= rad * rad);
+      r += y < top ? '.' : y === top ? 'u' : cr ? 'n' : 'm'; } rows.push(r); }
+    return rows;
+  }
   function pixelSVG(rows, size, cls) {
     const w = Math.max(...rows.map((r) => r.length)), hgt = rows.length; let rects = '';
     rows.forEach((row, y) => [...row].forEach((c, x) => { if (PAL[c]) rects += `<rect x="${x}" y="${y}" width="1" height="1" fill="${PAL[c]}"/>`; }));
@@ -610,6 +636,23 @@
         <div class="orbiter"><div class="upright"><div class="tumble">${pixelSVG(PX.nautL, 3, 'px-naut')}</div></div></div>
       </div>`;
   }
+  function moonLandingHTML(lander, others) {
+    const sprite = PX[PORTRAITS[lander.p.userId]] || PX.nautL, size = PORTRAITS[lander.p.userId] ? 6 : 8;
+    const lines = ['one small miss for ' + lander.p.name, fmt(lander.miles) + ' mi of misses', 'wait… wrong city?'];
+    return `<section class="card space">
+        <h3>Moon landing</h3>
+        <p class="sub" style="margin:0"><b>${esc(lander.p.name)}</b> is the first to reach the Moon, landing on ${esc(fmtDate(lander.landed, { weekday: 'long', month: 'long', day: 'numeric' }))} after ${fmt(DIST.moon)} miles of missed guesses${others.length ? `. Also landed: ${others.map((x) => `${esc(x.p.name)} (${esc(fmtDate(x.landed))})`).join(', ')}` : ''}.</p>
+        <div class="moonscene" role="img" aria-label="Pixel-art ${esc(lander.p.name)} planting a flag on the Moon">
+          <div class="stars"></div>
+          ${pixelSVG(PX.earth, 3, 'px-earth-sm')}
+          <svg class="px-ground" viewBox="0 0 100 18" preserveAspectRatio="none" shape-rendering="crispEdges" aria-hidden="true">${moonGround(100, 18).map((row, y) => [...row].map((c, x) => PAL[c] ? `<rect x="${x}" y="${y}" width="1.02" height="1.02" fill="${PAL[c]}"/>` : '').join('')).join('')}</svg>
+          <div class="bubble">${lines.map((t, i) => `<span style="animation-delay:${i * 4}s">“${esc(t)}”</span>`).join('')}</div>
+          <div class="lander">${pixelSVG(sprite, size, 'px-lander')}</div>
+          <div class="planted">${pixelSVG(PX.flag, 6, 'px-flag')}</div>
+        </div>
+      </section>`;
+  }
+
   function spaceRaceHTML(M) {
     // Each racer's data runs up to the last round in their latest share code (or the last refresh, for the owner).
     // Pace = miles missed per calendar day from the season start (or their join date) to that last round.
@@ -619,7 +662,8 @@
       const dates = [...new Set(r.map((x) => x.date))].sort(), last = dates[dates.length - 1];
       const from = [M.m.start, p.memberSince || ''].sort().pop();
       const miles = r.reduce((t, x) => t + (x.miles || 0), 0);
-      return { p, miles, rounds: dates.length, last, pace: miles / Math.max(1, dayDiff(from, last) + 1) };
+      let run = 0, landed = null; for (const d of dates) { run += r.filter((x) => x.date === d).reduce((t, x) => t + (x.miles || 0), 0); if (run >= DIST.moon) { landed = d; break; } }
+      return { p, miles, rounds: dates.length, last, landed, pace: miles / Math.max(1, dayDiff(from, last) + 1) };
     }).filter(Boolean).sort((a, b) => b.miles - a.miles);
     const intro = `<h2 class="section-title">Space Race</h2>
       <p class="section-sub">Every mile a guess has missed by, added up. How far would each player’s misses take them?</p>`;
@@ -642,7 +686,7 @@
         ? (t.leg ? `${pct(100 * t.into)} to the Moon again · ${pl(t.roundTrips, 'round trip')} done` : `${fmt(DIST.moon - m)} mi to go`)
         : `heading home · ${pct(100 * t.into)} of the way back`;
       return `<div class="lane${isTeam ? ' lane-team' : ''}">
-        <div class="lane-name"><span class="dot" style="background:${color}"></span><b>${name}</b><span class="dim">${sub}</span><span class="lane-upd">${isTeam ? 'latest data' : 'data through'} ${esc(fmtDate(last, { month: 'short', day: 'numeric' }))}</span></div>
+        <div class="lane-name"><span class="dot" style="background:${color}"></span><b>${name}</b><span class="dim">${sub}</span><span class="lane-upd">${isTeam ? 'latest data' : 'data through'} ${esc(fmtDate(last, { month: 'short', day: 'numeric' }))}</span><span class="lane-trips" title="One trip is Earth to the Moon, or the Moon back to Earth">${pl(t.leg, 'trip')} completed</span></div>
         <div class="lane-track${t.outbound ? '' : ' returning'}"><span class="lane-earth" aria-hidden="true"></span><div class="lane-fill" style="width:${w}%;background:${color}"></div><span class="lane-moon" aria-hidden="true"></span></div>
         <div class="lane-stat"><b>${big}</b><span>${note}</span>${pace ? `<span class="lane-eta">${forecast(m, pace, last)}</span>` : ''}</div>
       </div>`;
@@ -650,9 +694,10 @@
     const lanes = racers.map((x) => lane(esc(x.p.name), x.p.color, x.miles, `${fmt(x.miles)} mi · ${pl(x.rounds, 'round')}`, false, x.pace, x.last)).join('')
       + (racers.length > 1 ? lane(M.league === 'all' ? 'Whole group' : 'Whole league', 'var(--navy)', team, `${fmt(team)} mi combined`, true, teamPace, teamLast) : '');
     const laps = racers.map((x) => `<div class="lap"><span class="dot" style="background:${x.p.color}"></span><span class="lap-name">${esc(x.p.name)}</span><b>${fmt(x.miles / DIST.earth, 1)}</b><span class="dim">laps</span></div>`).join('');
-    return intro + `<section class="card space">
+    const landers = racers.filter((x) => x.landed).sort((a, b) => a.landed < b.landed ? -1 : a.landed > b.landed ? 1 : b.miles - a.miles);
+    return intro + (landers.length ? moonLandingHTML(landers[0], landers.slice(1)) : '') + `<section class="card space">
         <h3>Race to the Moon</h3>
-        <p class="sub">The Moon is ${fmt(DIST.moon)} miles away. More miles missed means further along. After landing, the bar tracks the trip back to Earth. Forecasts use each player’s pace so far.</p>
+        <p class="sub">The Moon is ${fmt(DIST.moon)} miles away. More miles missed means further along. After landing, the bar tracks the trip back to Earth. Each trip, Earth to Moon or Moon back to Earth, adds one to the trip counter. Forecasts use each player’s pace so far.</p>
         <div class="lanes">${lanes}</div>
       </section>
       <section class="card space">
