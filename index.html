@@ -609,12 +609,13 @@
   // Josh, first to the Moon: a hand-drawn sprite (dark hair, full beard, plaid flannel) in a glass helmet.
   PX.josh = ['....GGGGGGGG....', '...G.HHHHHH.G...', '..G.HHHHHHHH.G..', '..G.HSSSSSSH.G..', '..G.SESSSSES.G..', '..G.SSSSSSSS.G..', '..G.BSSSSSSB.G..', '..G.BBSMMSBB.G..', '..G.BBBBBBBB.G..', '...G.BBBBBB.G...', '....GGGGGGGG....',
     '...PRPPPRPPPR...', '..PPRPPPRPPPRP..', '..RRRRRRRRRRRR..', '..PPRPPPRPPPRP..', '..SPRPPPRPPPRS..', '...NNNNNNNNNN...', '...NNNN..NNNN...', '...NNNN..NNNN...', '..KKKKK..KKKKK..'];
-  PX.flag = ['ZFFFFFFFFF', 'ZFwFFXXXXX', 'ZFFFFwwwww', 'ZFFFFXXXXX', 'ZFFFFwwwww', 'ZXXXXXXXXX', 'Z.........', 'Z.........', 'Z.........', 'Z.........', 'Z.........', 'Z.........', 'Z.........', 'Z.........'];
+  // Brazilian flag: green field, yellow diamond, blue globe with a white band.
+  PX.flag = ['Zjjjjjjjjjjjjj', 'Zjjjjjjyjjjjjj', 'Zjjjjyyyyyjjjj', 'Zjjyyybbbyyyjj', 'Zjyyyywwbyyyyj', 'Zjjyyybbbyyyjj', 'Zjjjjyyyyyjjjj', 'Zjjjjjjyjjjjjj', 'Zjjjjjjjjjjjjj', 'Z.............', 'Z.............', 'Z.............', 'Z.............', 'Z.............', 'Z.............', 'Z.............', 'Z.............'];
   // Players who have their own pixel portrait for the Moon landing scene (everyone else gets the astronaut).
   const PORTRAITS = { '7f13929f-b32a-4f49-ae35-e06628b74107': 'josh' };
   const PAL = { d: '#1b4fa0', o: '#2f7fd8', g: '#3fae5a', w: '#ffffff', h: '#8a95a8', v: '#13306b', l: '#9fd3ff', r: '#d42a3c', k: '#33415c',
     G: '#bfe3ff', H: '#2a1d16', S: '#e0b090', E: '#1a1412', B: '#3b2a20', M: '#a8584e', P: '#6b4a2e', Q: '#8a7a3a', R: '#2b2420', C: '#d8c9a0', N: '#2f3640', K: '#151515',
-    F: '#13306b', X: '#d42a3c', Z: '#c8ccd4', m: '#9aa0aa', n: '#6d7380', u: '#c3c8d0' };
+    F: '#13306b', X: '#d42a3c', Z: '#c8ccd4', j: '#009c3b', y: '#fedf00', b: '#002776', m: '#9aa0aa', n: '#6d7380', u: '#c3c8d0' };
   function moonGround(w, h) {
     // Lunar surface: light grey with darker craters, a bumpy top edge. Deterministic so it never jumps between renders.
     const rows = []; for (let y = 0; y < h; y++) { let r = ''; for (let x = 0; x < w; x++) { const top = 1 + ((x * 7) % 5 === 0 ? 1 : 0) + ((x * 3) % 11 === 0 ? 1 : 0);
@@ -648,7 +649,7 @@
           <svg class="px-ground" viewBox="0 0 100 18" preserveAspectRatio="none" shape-rendering="crispEdges" aria-hidden="true">${moonGround(100, 18).map((row, y) => [...row].map((c, x) => PAL[c] ? `<rect x="${x}" y="${y}" width="1.02" height="1.02" fill="${PAL[c]}"/>` : '').join('')).join('')}</svg>
           <div class="bubble">${lines.map((t, i) => `<span style="animation-delay:${i * 4}s">“${esc(t)}”</span>`).join('')}</div>
           <div class="lander">${pixelSVG(sprite, size, 'px-lander')}</div>
-          <div class="planted">${pixelSVG(PX.flag, 6, 'px-flag')}</div>
+          <div class="planted">${pixelSVG(PX.flag, 5, 'px-flag')}</div>
         </div>
       </section>`;
   }
